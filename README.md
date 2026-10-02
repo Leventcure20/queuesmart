@@ -30,11 +30,12 @@ QueueSmart is a frontend demo built with HTML, CSS, and JavaScript. It has no pa
    py -m http.server 8000 --directory frontend
    ```
 
-6. Leave the terminal window open and visit **http://localhost:8000/dashboard.html** in your web browser.
+6. Leave the terminal window open and visit **http://localhost:8000/** in your web browser. This opens the QueueSmart home page.
 7. To stop the server, return to the terminal and press **Ctrl+C**.
 
 ## Main screens
 
+- `index.html` — public home page
 - `dashboard.html` — customer dashboard
 - `join-queue.html` — join a queue
 - `queue-status.html` — view ticket status
