@@ -89,3 +89,37 @@
   .mobile-nav-open .sidebar .profile{justify-content:flex-start;padding:13px 5px 0}
   .mobile-nav-open .sidebar .profile>span:not(.avatar){display:block}
 }
+.admin-dashboard-page .service-grid{gap:18px}
+.admin-dashboard-page .service-card{min-height:270px;padding:23px}
+.admin-dashboard-page .service-card h3{font-size:14px;margin-top:18px}
+.admin-dashboard-page .service-card>p{font-size:11px;line-height:1.5;min-height:30px}
+.admin-dashboard-page .service-metrics{gap:22px;margin:17px 0;padding:14px 0}
+.admin-dashboard-page .service-metrics strong{font-size:12px}
+.admin-dashboard-page .service-metrics small{font-size:9px}
+.admin-dashboard-page .service-card .button{height:38px;font-size:10px}
+.admin-dashboard-page .notification-card{min-height:84px;padding:20px 23px;margin-top:22px}
+.admin-dashboard-page .notification-card strong{font-size:13px}
+.admin-dashboard-page .notification-card>span{font-size:11px}
+.admin-dashboard-page .notification-card .button{height:38px;font-size:10px}
+@media(max-width:700px){.admin-dashboard-page .service-card{min-height:0;padding:18px}.admin-dashboard-page .notification-card{min-height:0;padding:16px;flex-wrap:wrap}}
+.notification-list{margin-top:12px;overflow:hidden}
+.notification-list[hidden]{display:none!important}
+.notification-list .panel-heading{padding-bottom:12px}
+.notification-row{display:flex;align-items:center;gap:11px;padding:13px 18px;border-top:1px solid #f0f1f5}
+.notification-type{width:29px;height:29px;flex:none;border-radius:8px;display:grid;place-items:center;background:#eeedff;color:var(--purple);font-size:12px;font-weight:700}
+.notification-type.wait{background:#fff3e4;color:#d39345}
+.notification-type.queue{background:#eaf4ff;color:#5392d7}
+.notification-copy{min-width:0;flex:1}
+.notification-copy strong,.notification-copy small{display:block}
+.notification-copy strong{font-size:10px;color:#4f5267}
+.notification-copy small{font-size:9px;color:#8f92a3;margin-top:3px}
+.notification-row time{flex:none;font-size:8px;color:#a0a3b1}
+@media(max-width:560px){.notification-row{padding:11px 13px}.notification-copy small{line-height:1.4}.notification-row time{font-size:7px}}
+
+.centered-page-title .page-heading{position:relative;justify-content:center;text-align:center}
+.centered-page-title .page-heading>div:first-child{text-align:center;margin-left:auto;margin-right:auto}
+.centered-page-title .page-heading p{margin-left:auto;margin-right:auto}
+.centered-page-title .heading-actions{position:absolute;right:0;top:0}
+@media(max-width:700px){.centered-page-title .heading-actions{top:0}}
+.add-service{border-color:#d8dae7}
+.add-service:hover{border-color:#a9a1ed;background:#fff}

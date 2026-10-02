@@ -2,6 +2,16 @@
 window.QueueSmartData = {
   currentUser: { name: 'Jordan Lee', role: 'Staff', initials: 'JL' },
   stats: { waiting: 12, serving: 3, completed: 48, averageWait: 14 },
+  notifications: {
+    users: [
+      { title: 'Queue status update', detail: 'Ticket A024 is almost ready.', time: '2 min ago', type: 'status' },
+      { title: 'Estimated wait updated', detail: 'General Inquiry is about 12 minutes.', time: '10 min ago', type: 'wait' }
+    ],
+    admins: [
+      { title: 'Queue length changed', detail: 'Billing & Payments has 4 people waiting.', time: '2 min ago', type: 'queue' },
+      { title: 'Service status changed', detail: 'Technical Support is closed to new customers.', time: '8 min ago', type: 'status' }
+    ]
+  },
   services: [
     { id: 'S-01', name: 'General Inquiry', description: 'Questions and account support', duration: 8, wait: 12, status: 'Open' },
     { id: 'S-02', name: 'Billing & Payments', description: 'Payments, invoices, and refunds', duration: 12, wait: 18, status: 'Open' },
