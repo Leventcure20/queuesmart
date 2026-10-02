@@ -53,3 +53,39 @@
 .public-page .landing-nav a{font-size:13px}
 .public-page .landing-nav .button{font-size:13px}
 #join-form label,#join-form input,#join-form select{font-size:12px}
+
+.admin-dashboard-page .page-heading{justify-content:center;text-align:center}
+.admin-dashboard-page .page-heading>div:first-child{text-align:center}
+/* Collapsible workspace navigation */
+.sidebar{transition:width .2s ease,padding .2s ease}
+.main{transition:margin-left .2s ease}
+.sidebar-toggle{position:absolute;top:32px;right:-12px;z-index:4;width:24px;height:24px;border:1px solid #e6e7ef;border-radius:50%;background:#fff;color:#686b7e;display:grid;place-items:center;padding:0;cursor:pointer;box-shadow:0 2px 5px #25243a12;font-size:17px;line-height:1}
+.sidebar-toggle:hover{color:var(--purple);border-color:#c9c4f5}
+.sidebar-collapsed .sidebar{width:68px;padding-left:11px;padding-right:11px}
+.sidebar-collapsed .main{margin-left:68px}
+.sidebar-collapsed .brand{justify-content:center;padding:0}
+.sidebar-collapsed .brand>span:last-child,.sidebar-collapsed .side-label,.sidebar-collapsed .help-card,.sidebar-collapsed .profile>span:not(.avatar),.sidebar-collapsed .profile-more{display:none}
+.sidebar-collapsed .sidebar nav .nav-link{font-size:0;justify-content:center;padding:0}
+.sidebar-collapsed .sidebar nav .nav-icon{font-size:17px}
+.sidebar-collapsed .profile{justify-content:center;padding-left:0;padding-right:0}
+.sidebar-collapsed .sidebar-toggle span{transform:rotate(180deg)}
+.mobile-nav-toggle{display:none}
+.sidebar-backdrop{display:none}
+@media(max-width:700px){
+  .sidebar,.sidebar-collapsed .sidebar{width:244px;padding:18px 16px;transform:translateX(-100%);transition:transform .22s ease;z-index:8;box-shadow:none}
+  .mobile-nav-open .sidebar{transform:translateX(0);box-shadow:12px 0 35px #20223924}
+  .sidebar-toggle{display:none}
+  .sidebar-backdrop{position:fixed;inset:0;background:#1f20374a;z-index:7}
+  .mobile-nav-open .sidebar-backdrop{display:block}
+  .main,.sidebar-collapsed .main{margin-left:0}
+  .mobile-nav-toggle{display:grid;place-items:center;flex:none;width:32px;height:32px;border:1px solid #e7e8ef;border-radius:7px;background:#fff;color:#62657a;font-size:16px;cursor:pointer}
+  .topbar{justify-content:flex-start;gap:10px}
+  .breadcrumbs{flex:1}
+  .mobile-nav-open .sidebar nav .nav-link{font-size:13px!important;justify-content:flex-start;padding:0 12px}
+  .mobile-nav-open .sidebar .brand>span:last-child,.mobile-nav-open .sidebar .side-label,.mobile-nav-open .sidebar .help-card,.mobile-nav-open .sidebar .profile>span:not(.avatar),.mobile-nav-open .sidebar .profile-more{display:initial}
+  .mobile-nav-open .sidebar .brand{justify-content:flex-start;padding:0 10px}
+  .mobile-nav-open .sidebar .side-label{display:block}
+  .mobile-nav-open .sidebar .help-card{display:block}
+  .mobile-nav-open .sidebar .profile{justify-content:flex-start;padding:13px 5px 0}
+  .mobile-nav-open .sidebar .profile>span:not(.avatar){display:block}
+}
