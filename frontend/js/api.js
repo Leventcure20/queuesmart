@@ -1,4 +1,4 @@
-/* API boundary for the future backend. Demo mode keeps the UI usable on its own. */
+/* Client-side API adapter for the QueueSmart frontend prototype. */
 window.QueueSmartApi = {
   demo: true,
   async getServices() { return window.QueueSmartData.services; },

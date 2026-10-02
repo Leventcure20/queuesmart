@@ -1,11 +1,11 @@
-/* Temporary frontend demo data. Replace with assignment-specific data later. */
+/* Example records used by the QueueSmart frontend prototype. */
 window.QueueSmartData = {
   currentUser: { name: 'Jordan Lee', role: 'Staff', initials: 'JL' },
   stats: { waiting: 12, serving: 3, completed: 48, averageWait: 14 },
   services: [
-    { id: 'S-01', name: 'General Inquiry', description: 'Questions and account support', wait: 12, status: 'Open' },
-    { id: 'S-02', name: 'Billing & Payments', description: 'Payments, invoices, and refunds', wait: 18, status: 'Open' },
-    { id: 'S-03', name: 'Technical Support', description: 'Product and technical help', wait: 24, status: 'Open' }
+    { id: 'S-01', name: 'General Inquiry', description: 'Questions and account support', duration: 8, wait: 12, status: 'Open' },
+    { id: 'S-02', name: 'Billing & Payments', description: 'Payments, invoices, and refunds', duration: 12, wait: 18, status: 'Open' },
+    { id: 'S-03', name: 'Technical Support', description: 'Product and technical help', duration: 20, wait: 24, status: 'Open' }
   ],
   tickets: [
     { number: 'A024', customer: 'Morgan Chen', service: 'General Inquiry', joined: '10:42 AM', wait: '8 min', status: 'Waiting' },
@@ -14,10 +14,11 @@ window.QueueSmartData = {
     { number: 'A021', customer: 'Taylor Brooks', service: 'General Inquiry', joined: '10:18 AM', wait: 'Completed', status: 'Completed' }
   ]
 };
-/* Keep demo edits across refreshes; clear QueueSmartDemo in devtools to reset. */
+/* Persist local prototype changes between page refreshes. */
 try {
   const saved = JSON.parse(localStorage.getItem('QueueSmartDemo') || '{}');
   if (Array.isArray(saved.services)) window.QueueSmartData.services = saved.services;
+  window.QueueSmartData.services.forEach(service => { if (!service.duration) service.duration = service.wait || 10; });
   if (Array.isArray(saved.tickets)) window.QueueSmartData.tickets = saved.tickets;
   window.QueueSmartData.save = () => localStorage.setItem('QueueSmartDemo', JSON.stringify({ services: window.QueueSmartData.services, tickets: window.QueueSmartData.tickets }));
 } catch (_) {

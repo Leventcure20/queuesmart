@@ -43,3 +43,13 @@
 .auth-page .landing-nav .button{height:32px;padding:0 11px}
 @media(max-width:700px){.auth-page .topbar{padding:0 14px}.auth-page .landing-brand{left:14px;top:13px}.auth-page .landing-nav{right:14px;top:13px}.auth-page .landing-nav a{font-size:9px}.auth-page .landing-nav .button{height:30px;padding:0 8px}}
 @media(max-width:430px){.landing-nav{gap:8px}.landing-nav a{font-size:9px}.landing-nav .button{padding:0 8px;font-size:8px}.auth-page .landing-brand{font-size:14px}.auth-page .landing-brand .brand-mark{width:25px;height:25px}.auth-page .landing-nav{gap:7px}.auth-page .landing-nav a{font-size:8px}.auth-page .landing-nav .button{padding:0 6px}}
+.auth-page .form-switch{font-size:13px}
+.auth-page .form-card h2,.auth-page .form-card>p{text-align:center}
+
+.auth-form-card>h2,.auth-form-card>p{text-align:center!important}
+.auth-form-card label{font-size:12px}
+.auth-form-card input{font-size:12px}
+.auth-form-card .auth-divider{font-size:12px}
+.public-page .landing-nav a{font-size:13px}
+.public-page .landing-nav .button{font-size:13px}
+#join-form label,#join-form input,#join-form select{font-size:12px}
