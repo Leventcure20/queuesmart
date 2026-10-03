@@ -162,7 +162,7 @@ const topbar = isPublic
     const positionNumber = queueIndex + 1;
     const suffix = positionNumber % 100 >= 11 && positionNumber % 100 <= 13 ? "th" : ["st", "nd", "rd"][positionNumber % 10 - 1] || "th";
     const position = current.status === "Serving" ? "Now serving" : ["Served", "Completed"].includes(current.status) ? "Served" : queueIndex < 0 ? "—" : `${positionNumber}${suffix}`;
-    markup = `<div class="status-card"><span class="status-check">✓</span><div class="eyebrow">QUEUE UPDATE</div><h2>Ticket <span class="ticket-id" id="status-ticket">${current.number}</span></h2><p id="status-copy">You’re in line for ${current.service}. We’ll notify you when it’s your turn.</p><div class="wait-highlight"><strong id="status-wait">~${current.wait}</strong><span>Estimated wait time</span></div><div class="queue-position"><span>Your ticket status</span><strong id="status-state">${current.status}</strong></div><div class="queue-position"><span>Your position in line</span><strong id="status-position">${position}</strong></div><div class="queue-position"><span>People ahead of you</span><strong>${Math.max(0, queueIndex)}</strong></div><button class="button button-secondary full-width" data-action="advance-status">Simulate queue update</button><button class="button button-danger full-width" data-action="leave-queue">Leave queue</button></div>`;
+    markup = `<div class="status-card"><span class="status-check">✓</span><div class="eyebrow">QUEUE UPDATE</div><h2>Ticket <span class="ticket-id" id="status-ticket">${current.number}</span></h2><p id="status-copy">You’re in line for ${current.service}. We’ll notify you when it’s your turn.</p><div class="wait-highlight"><strong id="status-wait">~${current.wait}</strong><span>Estimated wait time</span></div><div class="queue-position"><span>Your ticket status</span><strong id="status-state">${current.status}</strong></div><div class="queue-position"><span>Your position in line</span><strong id="status-position">${position}</strong></div><div class="queue-position"><span>People ahead of you</span><strong id="status-ahead">${Math.max(0, queueIndex)}</strong></div><button class="button button-secondary full-width" data-action="advance-status">Simulate queue update</button><button class="button button-danger full-width" data-action="leave-queue">Leave queue</button></div>`;
   } else if (path === "service-management.html")
     markup = `<div class="section-intro"><div><h2>Active services</h2><p>Create, update, and open or close queues.</p></div><button class="button button-primary" data-action="new-service">＋ Add service</button></div><div id="service-form-slot"></div>${serviceList(true)}`;
   else if (path === "queue-management.html")
@@ -320,22 +320,77 @@ const topbar = isPublic
     if (action === "advance-status") {
       const states = ["Waiting", "Almost ready", "Served"];
       const node = document.querySelector("#status-state");
-      const current = node?.textContent || "Waiting";
-      const next = states[(states.indexOf(current) + 1) % states.length];
-      if (node) node.textContent = next;
-      if (next === "Served") {
-        const positionNode = document.querySelector("#status-position");
-        if (positionNode) positionNode.textContent = "Served";
+      const currentStatus = node?.textContent || "Waiting";
+
+      // A served ticket should not cycle back to Waiting.
+      if (currentStatus === "Served") {
+        toast("This ticket has already been served.");
+        return;
       }
+
+      const currentIndex = states.indexOf(currentStatus);
+      const nextStatus = states[currentIndex + 1] || "Served";
+
+      // Update the ticket in the application's mocked data.
+      const ticketNumber = document
+        .querySelector("#status-ticket")
+        ?.textContent.trim();
+
+      const ticket = data.tickets.find(
+        (item) => item.number === ticketNumber,
+      );
+
+      if (ticket) {
+        ticket.status = nextStatus;
+
+        if (nextStatus === "Served") {
+          ticket.wait = "0 min";
+        }
+
+        data.save?.();
+      }
+
+      // Keep the user's current ticket in session storage in sync too.
+      const storedTicket = JSON.parse(
+        sessionStorage.getItem("queueTicket") || "null",
+      );
+
+      if (storedTicket && storedTicket.number === ticketNumber) {
+        storedTicket.status = nextStatus;
+
+        if (nextStatus === "Served") {
+          storedTicket.wait = "0 min";
+        }
+
+        sessionStorage.setItem(
+          "queueTicket",
+          JSON.stringify(storedTicket),
+        );
+      }
+
+      // Update what the user sees on the page.
+      if (node) node.textContent = nextStatus;
+
+      if (nextStatus === "Served") {
+        const positionNode = document.querySelector("#status-position");
+        const waitNode = document.querySelector("#status-wait");
+        const aheadNode = document.querySelector("#status-ahead");
+
+        if (positionNode) positionNode.textContent = "Served";
+        if (waitNode) waitNode.textContent = "0 min";
+        if (aheadNode) aheadNode.textContent = "0";
+      }
+
       const copy = document.querySelector("#status-copy");
-      if (copy)
+
+      if (copy) {
         copy.textContent =
-          next === "Served"
+          nextStatus === "Served"
             ? "You have been served. Thanks for using QueueSmart!"
-            : next === "Almost ready"
-              ? "You’re almost up. Please get ready."
-              : "You’re in line. We’ll notify you when it’s your turn.";
-      toast(`Queue status updated: ${next}.`);
+            : "You’re almost up. Please get ready.";
+      }
+
+      toast(`Queue status updated: ${nextStatus}.`);
     }
     if (action === "leave-queue") {
       const ticket = JSON.parse(
