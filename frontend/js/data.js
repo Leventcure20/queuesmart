@@ -71,7 +71,7 @@ window.QueueSmartData = {
       service: "General Inquiry",
       joined: "10:42 AM",
       wait: "8 min",
-      status: "Waiting",
+      status: "Almost ready",
     },
 
     {
@@ -94,11 +94,11 @@ window.QueueSmartData = {
       status: "Completed",
     },
     {
-      number: "A024",
+      number: "A025",
       customer: "Morgan Chen",
       service: "General Inquiry",
-      joined: "10:42 AM",
-      wait: "8 min",
+      joined: "10:44 AM",
+      wait: "10 min",
       status: "Waiting",
     },
     {

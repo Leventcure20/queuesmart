@@ -146,16 +146,18 @@ const topbar = isPublic
         "",
       )}</select></label><div class="wait-preview" id="wait-preview">Select a service to see the estimated wait.</div><div class="form-message" aria-live="polite"></div><button class="button button-primary full-width">Join queue →</button></form></div>`;
   else if (path === "queue-status.html") {
-    const current = JSON.parse(
+    const savedTicket = JSON.parse(
       sessionStorage.getItem("queueTicket") || "null",
-    ) ||
+    );
+    const current = savedTicket ||
+      data.tickets.find((t) => t.customer === data.currentUser.name && ["Waiting", "Almost ready", "Serving"].includes(t.status)) ||
       data.tickets.find((t) => t.status === "Waiting") || {
         number: "A024",
         service: "General Inquiry",
         status: "Waiting",
         wait: "12 min",
       };
-    const liveQueue = data.tickets.filter((t) => ["Waiting", "Almost ready"].includes(t.status));
+    const liveQueue = data.tickets.filter((t) => t.service === current.service && ["Waiting", "Almost ready"].includes(t.status));
     const queueIndex = liveQueue.findIndex((t) => t.number === current.number);
     const positionNumber = queueIndex + 1;
     const suffix = positionNumber % 100 >= 11 && positionNumber % 100 <= 13 ? "th" : ["st", "nd", "rd"][positionNumber % 10 - 1] || "th";

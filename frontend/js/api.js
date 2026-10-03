@@ -14,9 +14,15 @@ window.QueueSmartApi = {
     const service = window.QueueSmartData.services.find(
       (item) => item.id === serviceId,
     );
-    if (!service) throw new Error("Please choose an available service.");
+    if (!service || service.status !== "Open")
+      throw new Error("Please choose an available service.");
+    const highestTicketNumber = window.QueueSmartData.tickets.reduce(
+      (highest, ticket) =>
+        Math.max(highest, Number(String(ticket.number).replace(/\D/g, "")) || 0),
+      24,
+    );
     const ticket = {
-      number: `A${String(25 + window.QueueSmartData.tickets.length).padStart(3, "0")}`,
+      number: `A${String(highestTicketNumber + 1).padStart(3, "0")}`,
       customer: customerName,
       service: service.name,
       joined: new Date().toLocaleTimeString([], {
