@@ -56,6 +56,11 @@
 
 .admin-dashboard-page .page-heading{justify-content:center;text-align:center}
 .admin-dashboard-page .page-heading>div:first-child{text-align:center}
+.history-table{table-layout:fixed;min-width:800px}
+.history-table th,.history-table td{width:20%}
+.signout-button{height:32px;padding:0 11px;border:1px solid #e6e7ef;border-radius:6px;display:inline-flex;align-items:center;color:#62657a;font-size:11px;font-weight:600;white-space:nowrap}
+.signout-button:hover{border-color:#c9c4f5;color:var(--purple);background:#faf9ff}
+@media(max-width:700px){.signout-button{height:29px;padding:0 8px;font-size:10px}.top-actions{gap:8px}}
 .admin-usage-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:15px;margin:0 0 25px}
 .admin-stat-card{display:flex;align-items:center;gap:12px;padding:16px 18px;background:#fff;border:1px solid #eff0f5;border-radius:10px;box-shadow:0 2px 7px #282b4510}
 .admin-stat-icon{width:35px;height:35px;border-radius:9px;display:grid;place-items:center;font-size:16px;flex:none}
