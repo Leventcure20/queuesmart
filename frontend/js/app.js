@@ -63,6 +63,8 @@
     document.body.dataset.title || defaultTitles[path] || "QueueSmart";
   const app = document.querySelector("[data-app-shell]");
   if (!app) return;
+  const savedTheme = localStorage.getItem("QueueSmartTheme");
+  document.body.dataset.theme = savedTheme === "dark" ? "dark" : "light";
   const brandLink = `<a class="landing-brand" href="index.html"><span class="brand-mark">Q</span><span>Queue<span class="brand-light">Smart</span></span></a>`;
   const publicLinks =
     path === "index.html"
@@ -95,10 +97,15 @@
                 ["Sign in", "login.html"],
               ];
   const publicNavigation = `${brandLink}<nav class="landing-nav">${publicLinks.map(([label, href]) => `<a ${label === "Create account" && path === "index.html" ? 'class="button button-primary"' : ""} href="${href}">${label}</a>`).join("")}</nav>${hasCenteredHeader ? `<div class="auth-header-copy"><div class="eyebrow">QUEUESMART · CUSTOMER PORTAL</div><h1>${title}</h1></div>` : ""}`;
-  const topbar = isPublic
+const topbar = isPublic
     ? publicNavigation
+<<<<<<< HEAD
     : `<button class="mobile-nav-toggle" type="button" aria-label="Open navigation" aria-expanded="false">☰</button><a class="mobile-brand" href="${admin ? "admin-dashboard.html" : "dashboard.html"}"><span class="brand-mark">Q</span> QueueSmart</a><div class="breadcrumbs">${admin ? "Administration" : "My workspace"} <span>/</span> <strong>${title}</strong></div><div class="top-actions"><span class="live-indicator"><i></i> Workspace preview</span><button class="icon-button" aria-label="Notifications" data-action="toggle-notifications" aria-expanded="false">♧<b></b></button><span class="avatar small-avatar">JL</span><a class="signout-button" href="login.html">Sign out</a></div>`;
   app.innerHTML = `<aside class="sidebar"><a class="brand" href="${admin ? "admin-dashboard.html" : "dashboard.html"}"><span class="brand-mark">Q</span><span>Queue<span class="brand-light">Smart</span></span></a><button class="sidebar-toggle" type="button" aria-label="Collapse sidebar" aria-expanded="true"><span>‹</span></button><div class="side-label">${admin ? "ADMINISTRATION" : "YOUR QUEUES"}</div><nav>${nav.map(([href, label, icon]) => `<a class="nav-link ${path === href.split("?")[0] ? "active" : ""}" href="${href}"><span class="nav-icon">${icon}</span>${label}</a>`).join("")}</nav><div class="sidebar-bottom"><div class="help-card"><span class="help-icon">?</span><strong>Need a hand?</strong><p>Get help with your workspace.</p><a href="#" data-toast="The help center is unavailable in this preview.">Visit help center →</a></div><a class="profile" href="login.html"><span class="avatar">JL</span><span><strong>Jordan Lee</strong><small>${admin ? "Administrator" : "QueueSmart user"}</small></span><span class="profile-more">···</span></a></div></aside><div class="sidebar-backdrop" data-close-sidebar></div><main class="main"><header class="topbar">${topbar}</header><section class="page-content"><div class="page-heading"><div><div class="eyebrow">${admin ? "QUEUESMART · ADMIN PORTAL" : "QUEUESMART · USER DASHBOARD"}</div><h1>${title}</h1><p>${document.body.dataset.subtitle || "Manage your queues and services."}</p></div><div class="heading-actions">${path === "queue-management.html" ? '<button class="button button-primary" data-action="serve-next">Serve next →</button>' : ""}</div></div><div id="page-content"></div></section></main><div class="toast" role="status" aria-live="polite"></div>`;
+=======
+    : `<button class="mobile-nav-toggle" type="button" aria-label="Open navigation" aria-expanded="false">☰</button><a class="mobile-brand" href="${admin ? "admin-dashboard.html" : "dashboard.html"}"><span class="brand-mark">Q</span> QueueSmart</a><div class="breadcrumbs">${admin ? "Administration" : "My workspace"} <span>/</span> <strong>${title}</strong></div><div class="top-actions"><span class="live-indicator"><i></i> Workspace preview</span><button class="icon-button" id="theme-toggle" type="button" aria-label="Toggle theme">◐</button><button class="icon-button" aria-label="Notifications" data-action="toggle-notifications" aria-expanded="false">♧<b></b></button><span class="avatar small-avatar">JL</span><a class="signout-button" href="login.html">Sign out</a></div>`;
+  app.innerHTML = `<aside class="sidebar"><a class="brand" href="${admin ? "admin-dashboard.html" : "dashboard.html"}"><span class="brand-mark">Q</span><span>Queue<span class="brand-light">Smart</span></span></a><button class="sidebar-toggle" type="button" aria-label="Collapse sidebar" aria-expanded="true"><span>‹</span></button><div class="side-label">${admin ? "ADMINISTRATION" : "YOUR QUEUES"}</div><nav>${nav.map(([href, label, icon]) => `<a class="nav-link ${path === href.split("?")[0] ? "active" : ""}" href="${href}"><span class="nav-icon">${icon}</span>${label}</a>`).join("")}</nav><div class="sidebar-bottom"><div class="help-card"><span class="help-icon">?</span><strong>Need a hand?</strong><p>Get help with your workspace.</p><a href="#" data-toast="The help center is unavailable in this preview.">Visit help center →</a></div><a class="profile" href="login.html"><span class="avatar">JL</span><span><strong>Jordan Lee</strong><small>${admin ? "Administrator" : "QueueSmart user"}</small></span><span class="profile-more">···</span></a></div></aside><div class="sidebar-backdrop" data-close-sidebar></div><main class="main"><header class="topbar">${topbar}</header><section class="page-content"><div class="page-heading"><div><div class="eyebrow">QUEUESMART · ${admin ? "ADMIN" : "CUSTOMER"} PORTAL</div><h1>${title}</h1><p>${document.body.dataset.subtitle || "Manage your queues and services."}</p></div><div class="heading-actions">${path === "queue-management.html" ? '<button class="button button-primary" data-action="serve-next">Serve next →</button>' : ""}</div></div><div id="page-content"></div></section></main><div class="toast" role="status" aria-live="polite"></div>`;
+>>>>>>> 7d44b24ea27fcbc569aa91e5099e4df27c388d3f
   const root = document.querySelector("#page-content");
   const todayDate = new Intl.DateTimeFormat("en-US", {
     month: "short",
@@ -127,7 +134,7 @@
   const serviceList = (manage = false) =>
     `<div class="service-grid">${data.services.map((s, i) => `<article class="service-card"><div class="service-card-top"><span class="service-symbol symbol-${i % 3}">${["◈", "＄", "⌘"][i % 3]}</span>${badge(s.status || "Open")}</div><h3>${s.name}</h3><p>${s.description}</p><div class="service-metrics"><span><strong>${manage ? s.duration || 10 : s.wait} min</strong><small>${manage ? "Expected duration" : "Estimated wait"}</small></span><span><strong>${data.tickets.filter((t) => t.service === s.name && t.status === "Waiting").length + 2} people</strong><small>In this queue</small></span></div>${manage ? `<div class="card-actions"><button class="button button-secondary" data-action="edit-service" data-index="${i}">Edit</button><button class="button button-secondary" data-action="toggle-service" data-index="${i}">${s.status === "Open" ? "Close queue" : "Open queue"}</button></div>` : `<a class="button button-primary full-width" href="join-queue.html?service=${encodeURIComponent(s.id)}">Join queue →</a>`}</article>`).join("")}${manage ? "" : '<a class="add-service" href="join-queue.html"><span>＋</span><strong>Choose a service</strong><small>See all available queues</small></a>'}</div>`;
   const adminUsageStats = () =>
-    `<section class="admin-usage-stats" aria-label="Usage statistics"><article class="admin-stat-card"><span class="admin-stat-icon purple">↗</span><div><small>Served today</small><strong>${data.stats.servedToday}</strong></div></article><article class="admin-stat-card"><span class="admin-stat-icon blue">◷</span><div><small>Average wait time</small><strong>${data.stats.averageWait} <span>min</span></strong></div></article><article class="admin-stat-card"><span class="admin-stat-icon green">◇</span><div><small>Open services</small><strong>${data.services.filter((service) => service.status === "Open").length} <span>of ${data.services.length}</span></strong></div></article></section>`;
+    `<section class="admin-usage-block" aria-labelledby="usage-heading"><h2 id="usage-heading">Today at a glance</h2><div class="admin-usage-stats" aria-label="Usage statistics"><article class="admin-stat-card"><span class="admin-stat-icon purple">↗</span><div><small>Served today</small><strong>${data.stats.servedToday}</strong></div></article><article class="admin-stat-card"><span class="admin-stat-icon blue">◷</span><div><small>Average wait time</small><strong>${data.stats.averageWait} <span>min</span></strong></div></article><article class="admin-stat-card"><span class="admin-stat-icon green">◇</span><div><small>Open services</small><strong>${data.services.filter((service) => service.status === "Open").length} <span>of ${data.services.length}</span></strong></div></article></div></section>`;
   let markup = "";
   if (path === "index.html")
     markup = `<section class="landing-hero"><div class="landing-copy"><div class="landing-kicker"><span></span> QUEUE MANAGEMENT, MADE SIMPLE</div><h2>Your place in line,<br><em>without waiting in one.</em></h2><p>Join a queue, see your estimated wait, and know when it’s nearly your turn—all from one simple place.</p><div class="landing-ctas"><a class="button button-primary" href="join-queue.html">Join a queue <span>→</span></a><a class="landing-secondary" href="register.html">Create an account</a></div><div class="landing-note"><span class="avatar-stack"><i>Q</i><i>✓</i></span><span>Simple updates, less time wondering.</span></div></div><div class="landing-preview"><div class="preview-glow"></div><div class="preview-card"><div class="preview-top"><span class="preview-label"><i></i> QUEUE PREVIEW</span><span class="preview-menu">···</span></div><div class="preview-service"><span class="service-symbol symbol-0">◈</span><span><strong>General Inquiry</strong><small>Service queue</small></span></div><div class="preview-ticket"><span>Your ticket</span><strong>A024</strong></div><div class="preview-position"><div><strong>4<small>th</small></strong><span>in line</span></div><div><strong>~12<small> min</small></strong><span>estimated wait</span></div></div><div class="preview-progress"><span></span></div><div class="preview-update"><span>✓</span><span><strong>You’re in the queue</strong><small>We’ll let you know when you’re almost up.</small></span></div><div class="preview-watermark">A sample of your queue status</div></div><div class="preview-orbit orbit-one"></div><div class="preview-orbit orbit-two"></div></div></section><section class="landing-features"><div class="landing-section-heading"><div class="eyebrow">A BETTER WAY TO WAIT</div><h2>Know what’s happening in line.</h2></div><div class="feature-grid"><article class="feature-card"><span class="feature-icon purple">◷</span><h3>See your wait</h3><p>Check your place and estimated wait before you plan your next step.</p></article><article class="feature-card"><span class="feature-icon blue">↗</span><h3>Keep your place</h3><p>Join a service queue and follow your ticket from your device.</p></article><article class="feature-card"><span class="feature-icon green">✓</span><h3>Know when you’re close</h3><p>Get a clear status update as your turn gets closer.</p></article></div></section><section class="landing-bottom"><div><h2>Ready to get started?</h2><p>Join a queue or create an account to keep track of your visits.</p></div><a class="button button-primary" href="join-queue.html">Get started <span>→</span></a></section><footer class="landing-footer"><a href="index.html">QueueSmart</a><span>Queue management made simpler.</span><a href="admin-dashboard.html">Administrator access</a></footer>`;
@@ -153,7 +160,12 @@
         status: "Waiting",
         wait: "12 min",
       };
-    markup = `<div class="status-card"><span class="status-check">✓</span><div class="eyebrow">QUEUE UPDATE</div><h2>Ticket <span class="ticket-id" id="status-ticket">${current.number}</span></h2><p id="status-copy">You’re in line for ${current.service}. We’ll notify you when it’s your turn.</p><div class="wait-highlight"><strong id="status-wait">~${current.wait}</strong><span>Estimated wait time</span></div><div class="queue-position"><span>Current status</span><strong id="status-state">${current.status}</strong></div><div class="queue-position"><span>People ahead of you</span><strong>${Math.max(0, data.tickets.filter((t) => t.status === "Waiting").length - 1)}</strong></div><button class="button button-secondary full-width" data-action="advance-status">Simulate queue update</button><button class="button button-secondary full-width" data-action="leave-queue">Leave queue</button></div>`;
+    const liveQueue = data.tickets.filter((t) => ["Waiting", "Almost ready"].includes(t.status));
+    const queueIndex = liveQueue.findIndex((t) => t.number === current.number);
+    const positionNumber = queueIndex + 1;
+    const suffix = positionNumber % 100 >= 11 && positionNumber % 100 <= 13 ? "th" : ["st", "nd", "rd"][positionNumber % 10 - 1] || "th";
+    const position = current.status === "Serving" ? "Now serving" : ["Served", "Completed"].includes(current.status) ? "Served" : queueIndex < 0 ? "—" : `${positionNumber}${suffix}`;
+    markup = `<div class="status-card"><span class="status-check">✓</span><div class="eyebrow">QUEUE UPDATE</div><h2>Ticket <span class="ticket-id" id="status-ticket">${current.number}</span></h2><p id="status-copy">You’re in line for ${current.service}. We’ll notify you when it’s your turn.</p><div class="wait-highlight"><strong id="status-wait">~${current.wait}</strong><span>Estimated wait time</span></div><div class="queue-position"><span>Your ticket status</span><strong id="status-state">${current.status}</strong></div><div class="queue-position"><span>Your position in line</span><strong id="status-position">${position}</strong></div><div class="queue-position"><span>People ahead of you</span><strong>${Math.max(0, queueIndex)}</strong></div><button class="button button-secondary full-width" data-action="advance-status">Simulate queue update</button><button class="button button-danger full-width" data-action="leave-queue">Leave queue</button></div>`;
   } else if (path === "service-management.html")
     markup = `<div class="section-intro"><div><h2>Active services</h2><p>Create, update, and open or close queues.</p></div><button class="button button-primary" data-action="new-service">＋ Add service</button></div><div id="service-form-slot"></div>${serviceList(true)}`;
   else if (path === "queue-management.html")
@@ -171,6 +183,22 @@
       )
       .join("")}</tbody></table></div></div>`;
   root.innerHTML = markup;
+  const themeToggle = document.querySelector("#theme-toggle");
+  const updateThemeToggle = () => {
+    const isDark = document.body.dataset.theme === "dark";
+    themeToggle?.setAttribute(
+      "aria-label",
+      isDark ? "Switch to light mode" : "Switch to dark mode",
+    );
+    themeToggle?.setAttribute("aria-pressed", String(isDark));
+  };
+  updateThemeToggle();
+  themeToggle?.addEventListener("click", () => {
+    const nextTheme = document.body.dataset.theme === "dark" ? "light" : "dark";
+    document.body.dataset.theme = nextTheme;
+    localStorage.setItem("QueueSmartTheme", nextTheme);
+    updateThemeToggle();
+  });
   const sidebarToggle = document.querySelector(".sidebar-toggle");
   const mobileNavToggle = document.querySelector(".mobile-nav-toggle");
   const setMobileNav = (open) => {
@@ -298,6 +326,10 @@
       const current = node?.textContent || "Waiting";
       const next = states[(states.indexOf(current) + 1) % states.length];
       if (node) node.textContent = next;
+      if (next === "Served") {
+        const positionNode = document.querySelector("#status-position");
+        if (positionNode) positionNode.textContent = "Served";
+      }
       const copy = document.querySelector("#status-copy");
       if (copy)
         copy.textContent =
