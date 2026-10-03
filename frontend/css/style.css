@@ -2765,16 +2765,83 @@ tbody tr:hover {
   background: #fff
 }
 
-/* Queue status destructive action */
-.status-card [data-action="leave-queue"] {
-  margin-top: 12px;
-  background: #d94f4f;
-  border-color: #d94f4f;
-  color: #fff
+/* Dark Mode Color Palette */
+[data-theme="dark"] {
+  --ink: #e2e4f0;
+  --muted: #9da1b8;
+  --line: #2b2d42;
+  --surface: #1e1f31;
+  background-color: #141523;
+  color: var(--ink);
 }
 
-.status-card [data-action="leave-queue"]:hover {
-  background: #bd3f3f;
-  border-color: #bd3f3f;
-  color: #fff
+/* Dark Mode Overrides for Hardcoded Component Colors */
+[data-theme="dark"] .sidebar,
+[data-theme="dark"] .topbar,
+[data-theme="dark"] .stat-card,
+[data-theme="dark"] .panel,
+[data-theme="dark"] .service-card,
+[data-theme="dark"] .form-card,
+[data-theme="dark"] .status-card,
+[data-theme="dark"] .notification-card,
+[data-theme="dark"] .user-welcome,
+[data-theme="dark"] .admin-stat-card,
+[data-theme="dark"] .feature-card,
+[data-theme="dark"] .preview-card,
+[data-theme="dark"] .landing-page .topbar {
+  background-color: var(--surface);
+  border-color: var(--line);
+  color: var(--ink);
+}
+
+[data-theme="dark"] thead,
+[data-theme="dark"] .help-card,
+[data-theme="dark"] .wait-highlight,
+[data-theme="dark"] .preview-ticket {
+  background-color: #26283d;
+}
+
+[data-theme="dark"] h1,
+[data-theme="dark"] h2,
+[data-theme="dark"] h3,
+[data-theme="dark"] strong,
+[data-theme="dark"] .admin-stat-card strong,
+[data-theme="dark"] .queue-position strong,
+[data-theme="dark"] .landing-copy h2 {
+  color: #f0f2fd;
+}
+
+[data-theme="dark"] tbody tr:hover {
+  background-color: #24263a;
+}
+
+[data-theme="dark"] td {
+  border-top-color: var(--line);
+  color: #c0c3d6;
+}
+
+[data-theme="dark"] input,
+[data-theme="dark"] select,
+[data-theme="dark"] textarea,
+[data-theme="dark"] .search-box {
+  background-color: #141523;
+  border-color: #32354e;
+  color: #f0f2fd;
+}
+
+[data-theme="dark"] .button-secondary,
+[data-theme="dark"] .signout-button,
+[data-theme="dark"] .mini-button,
+[data-theme="dark"] .mobile-nav-toggle {
+  background-color: #26283d;
+  border-color: #373a56;
+  color: #d1d4e6;
+}
+
+[data-theme="dark"] .button-secondary:hover,
+[data-theme="dark"] .signout-button:hover,
+[data-theme="dark"] .mini-button:hover {
+  background-color: #2f324d;
+  border-color: var(--purple);
+  color: #fff;
 }
