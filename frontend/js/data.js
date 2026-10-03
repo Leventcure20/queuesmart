@@ -67,6 +67,34 @@ window.QueueSmartData = {
   tickets: [
     {
       number: "A024",
+      customer: "Jordan Lee",
+      service: "General Inquiry",
+      joined: "10:42 AM",
+      wait: "8 min",
+      status: "Waiting",
+    },
+
+    {
+      number: "A020",
+      customer: "Jordan Lee",
+      service: "Technical Support",
+      joined: "2:15 PM",
+      joinedDate: "Oct 1",
+      wait: "Completed",
+      status: "Completed",
+    },
+
+    {
+      number: "A018",
+      customer: "Jordan Lee",
+      service: "Billing & Payments",
+      joined: "11:30 AM",
+      joinedDate: "Sep 27",
+      wait: "Completed",
+      status: "Completed",
+    },
+    {
+      number: "A024",
       customer: "Morgan Chen",
       service: "General Inquiry",
       joined: "10:42 AM",

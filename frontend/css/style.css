@@ -2756,3 +2756,53 @@ tbody tr:hover {
   border-color: #a9a1ed;
   background: #fff
 }
+
+/* Customer Dashboard Current Queue*/
+.current-queue-card {
+  padding-bottom: 18px;
+  margin: 16px 0;
+}
+.current-queue-card .panel-heading {
+  border-bottom: 1px solid var(--line);
+}
+.current-queue-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr) auto;
+  align-items: center;
+  gap: 20px;
+  padding: 18px ;
+}
+.current-queue-stats > div {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-height: 45px;
+  padding: 0 20px;
+  border-right: 1px solid var(--line);
+}
+.current-queue-stats > div:first-child {
+  padding-left: 0;
+}
+.current-queue-stats > strong {
+  display: block;
+  font: 700 20px Manrope, sans-serif;
+  color: var(--ink);
+}
+.current-queue-stats > span {
+  display: block;
+  margin-top: 4px;
+  font-size: 9px;
+  color: var(--muted)
+}
+@media(max-width:700px) {
+  .current-queue-stats {
+    grid-template-columns: 1fr 1fr;
+   
+  }
+  .current-queue-stats > div {
+    border-right: 0;
+  }
+  .current-queue-stats > .button{
+    width: 100%;
+  }
+}
