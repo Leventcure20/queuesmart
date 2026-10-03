@@ -1,7 +1,7 @@
 /* Example records used by the QueueSmart frontend prototype. */
 window.QueueSmartData = {
   currentUser: { name: 'Jordan Lee', role: 'Staff', initials: 'JL' },
-  stats: { waiting: 12, serving: 3, completed: 48, averageWait: 14 },
+  stats: { waiting: 12, serving: 3, completed: 48, servedToday: 18, averageWait: 14 },
   notifications: {
     users: [
       { title: 'Queue status update', detail: 'Ticket A024 is almost ready.', time: '2 min ago', type: 'status' },
