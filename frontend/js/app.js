@@ -358,6 +358,8 @@ const topbar = isPublic
     if (!slot) return;
     slot.innerHTML = `<div class="form-card service-editor"><h2>${existing ? "Edit service" : "Create service"}</h2><form id="service-form" novalidate><label>Service name<input name="name" maxlength="100" required value="${existing?.name || ""}"></label><label>Description<textarea name="description" required rows="3">${existing?.description || ""}</textarea></label><label>Expected duration (minutes)<input name="duration" type="number" min="1" required value="${existing?.duration || ""}"></label><label>Priority level<select name="priority" required><option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option></select></label><div class="form-message" aria-live="polite"></div><button class="button button-primary">${existing ? "Save changes" : "Create service"}</button><button type="button" class="button button-secondary" data-action="cancel-form">Cancel</button></form></div>`;
     slot.scrollIntoView({ behavior: "smooth", block: "center" });
+    if (existing)
+      slot.querySelector('[name="priority"]').value = existing.priority || "low";
     slot.querySelector("#service-form").addEventListener("submit", (e) => {
       e.preventDefault();
       const f = e.currentTarget;
