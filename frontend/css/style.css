@@ -999,6 +999,19 @@ tbody tr:hover {
   width: 100%
 }
 
+.status-card [data-action="leave-queue"] {
+  margin-top: 12px;
+  background: #d94f4f;
+  border-color: #d94f4f;
+  color: #fff
+}
+
+.status-card [data-action="leave-queue"]:hover {
+  background: #bd3f3f;
+  border-color: #bd3f3f;
+  color: #fff
+}
+
 .toast {
   position: fixed;
   bottom: 24px;
