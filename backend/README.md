@@ -21,6 +21,6 @@ The API health endpoint is `GET /api/health`.
 - `src/app.js` — Express app configuration
 - `src/server.js` — starts the HTTP server
 
-Registration and login currently return `501 Not Implemented`: persistence, password hashing, and token strategy have not been selected yet. Google login is an intentionally empty placeholder.
+Registration and login currently return `501 Not Implemented`: user persistence and a token/session strategy have not been selected yet. Password hashing helpers using bcrypt are available in `src/modules/auth/password.js`, but are not yet connected to registration or login. Google login is an intentionally empty placeholder.
 
 Service endpoints are `GET /api/services`, `POST /api/services`, and `PUT /api/services/:id`. Service records are currently held in memory and reset when the server restarts. Expected duration is expressed in minutes; priority levels are `low`, `medium`, or `high`.
