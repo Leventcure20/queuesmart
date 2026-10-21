@@ -2,8 +2,20 @@ const queueRepository = require('./queue.repository');
 const servicesRepository = require('../services/services.repository');
 const { ROLES } = require('../auth/roles');
 
+function withWaitEstimate(ticket) {
+  const position = queueRepository.getPosition(ticket.id);
+  const service = servicesRepository.findById(ticket.serviceId);
+  return {
+    ...ticket,
+    position,
+    estimatedWaitMinutes: position === null || !service
+      ? null
+      : position * service.expectedDuration,
+  };
+}
+
 function list(_req, res) {
-  return res.json({ tickets: queueRepository.list() });
+  return res.json({ tickets: queueRepository.list().map(withWaitEstimate) });
 }
 
 function join(req, res) {
@@ -15,7 +27,7 @@ function join(req, res) {
     customerName: req.user.name,
     service,
   });
-  return res.status(201).json({ ticket });
+  return res.status(201).json({ ticket: withWaitEstimate(ticket) });
 }
 
 function leave(req, res) {
@@ -28,7 +40,7 @@ function leave(req, res) {
   if (ticket.cannotLeave) {
     return res.status(409).json({ error: 'Only waiting tickets can leave the queue' });
   }
-  return res.json({ ticket });
+  return res.json({ ticket: withWaitEstimate(ticket) });
 }
 
 module.exports = { list, join, leave };

@@ -12,6 +12,16 @@ function findById(id) {
   return tickets.get(id) || null;
 }
 
+function getPosition(id) {
+  const ticket = tickets.get(id);
+  if (!ticket || ticket.status !== 'waiting') return null;
+
+  const waitingForService = Array.from(tickets.values()).filter((candidate) =>
+    candidate.serviceId === ticket.serviceId && candidate.status === 'waiting'
+  );
+  return waitingForService.findIndex((candidate) => candidate.id === id) + 1;
+}
+
 function join({ userId, customerName, service }) {
   const now = new Date().toISOString();
   const ticket = {
@@ -45,4 +55,4 @@ function leave(id) {
   return updated;
 }
 
-module.exports = { list, findById, join, leave };
+module.exports = { list, findById, getPosition, join, leave };
