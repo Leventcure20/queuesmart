@@ -1,4 +1,4 @@
-(() => {
+(async () => {
   const path = location.pathname.split("/").pop() || "index.html";
   const data = window.QueueSmartData;
   const isPublic = [
@@ -8,6 +8,39 @@
     "join-queue.html",
     "queue-status.html",
   ].includes(path);
+  const adminOnlyPage =
+    ["admin-dashboard.html", "service-management.html", "queue-management.html"].includes(path) ||
+    (path === "history.html" && new URLSearchParams(location.search).get("role") === "admin");
+  const authStorageKey = "QueueSmartAuth";
+  let authSession = null;
+  try {
+    authSession = JSON.parse(localStorage.getItem(authStorageKey) || "null");
+  } catch {
+    localStorage.removeItem(authStorageKey);
+  }
+  if (!isPublic) {
+    if (!authSession?.token || !authSession.expiresAt || Date.parse(authSession.expiresAt) <= Date.now()) {
+      localStorage.removeItem(authStorageKey);
+      location.replace("login.html?returnTo=" + encodeURIComponent(path + location.search));
+      return;
+    }
+    try {
+      authSession.user = await window.QueueSmartApi.getCurrentUser();
+      localStorage.setItem(authStorageKey, JSON.stringify(authSession));
+    } catch {
+      localStorage.removeItem(authStorageKey);
+      location.replace("login.html?returnTo=" + encodeURIComponent(path + location.search));
+      return;
+    }
+    if (adminOnlyPage && authSession.user.role !== "admin") {
+      location.replace("dashboard.html");
+      return;
+    }
+    if (path === "dashboard.html" && authSession.user.role === "admin") {
+      location.replace("admin-dashboard.html");
+      return;
+    }
+  }
   document.body.classList.toggle("public-page", isPublic);
   const isLanding = path === "index.html";
   document.body.classList.toggle("landing-page", isLanding);
@@ -99,7 +132,7 @@
   const publicNavigation = `${brandLink}<nav class="landing-nav">${publicLinks.map(([label, href]) => `<a ${label === "Create account" && path === "index.html" ? 'class="button button-primary"' : ""} href="${href}">${label}</a>`).join("")}</nav>${hasCenteredHeader ? `<div class="auth-header-copy"><div class="eyebrow">QUEUESMART · CUSTOMER PORTAL</div><h1>${title}</h1></div>` : ""}`;
 const topbar = isPublic
     ? publicNavigation
-    : `<button class="mobile-nav-toggle" type="button" aria-label="Open navigation" aria-expanded="false">☰</button><a class="mobile-brand" href="${admin ? "admin-dashboard.html" : "dashboard.html"}"><span class="brand-mark">Q</span> QueueSmart</a><div class="breadcrumbs">${admin ? "Administration" : "My workspace"} <span>/</span> <strong>${title}</strong></div><div class="top-actions"><span class="live-indicator"><i></i> Workspace preview</span><button class="icon-button" id="theme-toggle" type="button" aria-label="Toggle theme">◐</button><button class="icon-button" aria-label="Notifications" data-action="toggle-notifications" aria-expanded="false">♧<b></b></button><span class="avatar small-avatar">JL</span><a class="signout-button" href="login.html">Sign out</a></div>`;
+    : `<button class="mobile-nav-toggle" type="button" aria-label="Open navigation" aria-expanded="false">☰</button><a class="mobile-brand" href="${admin ? "admin-dashboard.html" : "dashboard.html"}"><span class="brand-mark">Q</span> QueueSmart</a><div class="breadcrumbs">${admin ? "Administration" : "My workspace"} <span>/</span> <strong>${title}</strong></div><div class="top-actions"><span class="live-indicator"><i></i> Workspace preview</span><button class="icon-button" id="theme-toggle" type="button" aria-label="Toggle theme">◐</button><button class="icon-button" aria-label="Notifications" data-action="toggle-notifications" aria-expanded="false">♧<b></b></button><span class="avatar small-avatar">JL</span><a class="signout-button" href="login.html" data-action="logout">Sign out</a></div>`;
   app.innerHTML = `<aside class="sidebar"><a class="brand" href="${admin ? "admin-dashboard.html" : "dashboard.html"}"><span class="brand-mark">Q</span><span>Queue<span class="brand-light">Smart</span></span></a><button class="sidebar-toggle" type="button" aria-label="Collapse sidebar" aria-expanded="true"><span>‹</span></button><div class="side-label">${admin ? "ADMINISTRATION" : "YOUR QUEUES"}</div><nav>${nav.map(([href, label, icon]) => `<a class="nav-link ${path === href.split("?")[0] ? "active" : ""}" href="${href}"><span class="nav-icon">${icon}</span>${label}</a>`).join("")}</nav><div class="sidebar-bottom"><div class="help-card"><span class="help-icon">?</span><strong>Need a hand?</strong><p>Get help with your workspace.</p><a href="#" data-toast="The help center is unavailable in this preview.">Visit help center →</a></div><a class="profile" href="login.html"><span class="avatar">JL</span><span><strong>Jordan Lee</strong><small>${admin ? "Administrator" : "QueueSmart user"}</small></span><span class="profile-more">···</span></a></div></aside><div class="sidebar-backdrop" data-close-sidebar></div><main class="main"><header class="topbar">${topbar}</header><section class="page-content"><div class="page-heading"><div><div class="eyebrow">${admin ? "QUEUESMART · ADMIN PORTAL" : "QUEUESMART · USER DASHBOARD"}</div><h1>${title}</h1><p>${document.body.dataset.subtitle || "Manage your queues and services."}</p></div><div class="heading-actions">${path === "queue-management.html" ? '<button class="button button-primary" data-action="serve-next">Serve next →</button>' : ""}</div></div><div id="page-content"></div></section></main><div class="toast" role="status" aria-live="polite"></div>`;
   const root = document.querySelector("#page-content");
   const todayDate = new Intl.DateTimeFormat("en-US", {
@@ -249,7 +282,7 @@ const topbar = isPublic
       2500,
     );
   };
-  document.addEventListener("click", (event) => {
+  document.addEventListener("click", async (event) => {
     const target = event.target.closest("[data-toast],[data-action]");
     if (!target) return;
     if (target.dataset.toast) {
@@ -259,6 +292,17 @@ const topbar = isPublic
     }
     const index = Number(target.dataset.index),
       action = target.dataset.action;
+    if (action === "logout") {
+      event.preventDefault();
+      try {
+        await window.QueueSmartApi.logout();
+      } catch {
+        // Clear the local session even if it has already expired on the backend.
+      }
+      localStorage.removeItem(authStorageKey);
+      location.href = "login.html";
+      return;
+    }
     if (action === "toggle-notifications") {
       const panel = document.querySelector("#notifications-panel");
       if (!panel) {
@@ -420,11 +464,34 @@ const topbar = isPublic
     };
     document.body.append(googleScript);
   }
-  document.querySelector("#auth-form")?.addEventListener("submit", (e) => {
+  document.querySelector("#auth-form")?.addEventListener("submit", async (e) => {
     e.preventDefault();
     const f = e.currentTarget;
     if (!f.reportValidity()) return;
-    window.location.href = "dashboard.html";
+    const message = f.querySelector(".form-message");
+    const submitButton = f.querySelector('button[type="submit"]') || f.querySelector("button");
+    submitButton.disabled = true;
+    message.textContent = "";
+    try {
+      const credentials = {
+        email: f.elements.email.value.trim(),
+        password: f.elements.password.value,
+      };
+      const session = path === "register.html"
+        ? await window.QueueSmartApi.register({ name: f.elements.name.value.trim(), ...credentials })
+        : await window.QueueSmartApi.login(credentials);
+      localStorage.setItem(authStorageKey, JSON.stringify(session));
+      const requestedPage = new URLSearchParams(location.search).get("returnTo");
+      const safePage = /^(dashboard|admin-dashboard|service-management|queue-management|history|join-queue|queue-status)\.html(?:\?role=admin)?$/.test(requestedPage || "");
+      const destination = safePage
+        ? requestedPage
+        : session.user.role === "admin" ? "admin-dashboard.html" : "dashboard.html";
+      location.href = destination;
+    } catch (error) {
+      message.textContent = error.message;
+    } finally {
+      submitButton.disabled = false;
+    }
   });
   const applyQueueFilters = () => {
     const query =

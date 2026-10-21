@@ -7,6 +7,10 @@ function list() {
   return Array.from(services.values());
 }
 
+function findById(id) {
+  return services.get(id) || null;
+}
+
 function create(data) {
   const now = new Date().toISOString();
   const service = { id: randomUUID(), ...data, createdAt: now, updatedAt: now };
@@ -23,4 +27,4 @@ function update(id, changes) {
   return service;
 }
 
-module.exports = { list, create, update };
+module.exports = { list, findById, create, update };

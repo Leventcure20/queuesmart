@@ -21,6 +21,8 @@ The API health endpoint is `GET /api/health`.
 - `src/app.js` — Express app configuration
 - `src/server.js` — starts the HTTP server
 
-Registration and login currently return `501 Not Implemented`: user persistence and a token/session strategy have not been selected yet. Password hashing helpers using bcrypt are available in `src/modules/auth/password.js`, but are not yet connected to registration or login. Google login is an intentionally empty placeholder.
+Registration and email/password login work with temporary in-memory accounts. Passwords are hashed with bcrypt. Registration assigns the `user` role; an administrator account can be bootstrapped by setting `ADMIN_NAME`, `ADMIN_EMAIL`, and `ADMIN_PASSWORD` in `.env`. Login and registration return a Bearer token that expires after 24 hours. Use `GET /api/auth/me` with `Authorization: Bearer <token>` to read the signed-in account, and `POST /api/auth/logout` to revoke its session. Service creation/updates and ticket listing require the admin role; joining a queue requires login, and users can leave only their own waiting ticket. Google login remains a placeholder. Accounts and sessions reset when the server restarts; database storage is not implemented.
 
-Service endpoints are `GET /api/services`, `POST /api/services`, and `PUT /api/services/:id`. Service records are currently held in memory and reset when the server restarts. Expected duration is expressed in minutes; priority levels are `low`, `medium`, or `high`.
+Service endpoints are `GET /api/services`, `POST /api/services`, and `PUT /api/services/:id`. Queue endpoints are `GET /api/queue/tickets`, `POST /api/queue/tickets`, and `DELETE /api/queue/tickets/:ticketId`. To join, send `serviceId`; the account name is used for the ticket. Leaving marks a waiting ticket as cancelled. Service records and queue tickets are held in memory and reset when the server restarts.
+
+Expected service duration is expressed in minutes; service priority levels are `low`, `medium`, or `high`.

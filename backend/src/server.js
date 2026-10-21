@@ -1,6 +1,13 @@
 const app = require('./app');
-const { port } = require('./config/env');
+const { port, adminName, adminEmail, adminPassword } = require('./config/env');
+const authRepository = require('./modules/auth/auth.repository');
 
-app.listen(port, () => {
-  console.log(`QueueSmart API listening on port ${port}`);
+async function start() {
+  await authRepository.initializeAdmin({ name: adminName, email: adminEmail, password: adminPassword });
+  app.listen(port, () => console.log(`QueueSmart API listening on port ${port}`));
+}
+
+start().catch((error) => {
+  console.error('Could not start QueueSmart API', error);
+  process.exitCode = 1;
 });
