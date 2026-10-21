@@ -18,6 +18,22 @@ function list(_req, res) {
   return res.json({ tickets: queueRepository.list().map(withWaitEstimate) });
 }
 
+function listMine(req, res) {
+  const tickets = queueRepository.list()
+    .filter((ticket) => ticket.userId === req.user.id)
+    .map(withWaitEstimate);
+  return res.json({ tickets });
+}
+
+function get(req, res) {
+  const ticket = queueRepository.findById(req.params.ticketId);
+  if (!ticket) return res.status(404).json({ error: 'Ticket not found' });
+  if (ticket.userId !== req.user.id && req.user.role !== ROLES.ADMIN) {
+    return res.status(403).json({ error: 'You can only view your own ticket' });
+  }
+  return res.json({ ticket: withWaitEstimate(ticket) });
+}
+
 function join(req, res) {
   const service = servicesRepository.findById(req.body.serviceId);
   if (!service) return res.status(404).json({ error: 'Service not found' });
@@ -43,4 +59,4 @@ function leave(req, res) {
   return res.json({ ticket: withWaitEstimate(ticket) });
 }
 
-module.exports = { list, join, leave };
+module.exports = { list, listMine, get, join, leave };

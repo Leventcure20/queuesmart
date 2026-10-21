@@ -1,4 +1,4 @@
-/* Frontend API adapter. Auth uses the backend; queue data remains a local demo. */
+/* QueueSmart API adapter. Auth, services, and queue records come from the backend. */
 const QUEUESMART_API_ROOT = "http://localhost:3000/api";
 const AUTH_STORAGE_KEY = "QueueSmartAuth";
 
@@ -10,7 +10,7 @@ function readAuthSession() {
   }
 }
 
-async function authRequest(path, options = {}) {
+async function apiRequest(path, options = {}) {
   const session = readAuthSession();
   const headers = { ...(options.headers || {}) };
   if (options.body) headers["Content-Type"] = "application/json";
@@ -28,60 +28,91 @@ async function authRequest(path, options = {}) {
   return result;
 }
 
+function mapService(service) {
+  return {
+    ...service,
+    duration: service.expectedDuration,
+    wait: service.expectedDuration,
+    priority: service.priorityLevel,
+    status: "Open",
+  };
+}
+
+function mapTicket(ticket) {
+  const joinedAt = new Date(ticket.joinedAt);
+  const statuses = { waiting: "Waiting", cancelled: "Cancelled", serving: "Serving", served: "Completed" };
+  return {
+    ...ticket,
+    customer: ticket.customerName,
+    service: ticket.serviceName,
+    joined: joinedAt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+    joinedDate: joinedAt.toLocaleDateString([], { month: "short", day: "numeric" }),
+    wait: ticket.estimatedWaitMinutes == null ? "—" : ticket.estimatedWaitMinutes + " min",
+    status: statuses[ticket.status] || ticket.status,
+  };
+}
+
 window.QueueSmartApi = {
-  demo: true,
   async register({ name, email, password }) {
-    return authRequest("/auth/register", {
+    return apiRequest("/auth/register", {
       method: "POST",
       body: JSON.stringify({ name, email, password }),
     });
   },
   async login({ email, password }) {
-    return authRequest("/auth/login", {
+    return apiRequest("/auth/login", {
       method: "POST",
       body: JSON.stringify({ email, password }),
     });
   },
   async getCurrentUser() {
-    const result = await authRequest("/auth/me");
+    const result = await apiRequest("/auth/me");
     return result.user;
   },
   async logout() {
-    return authRequest("/auth/logout", { method: "POST" });
+    return apiRequest("/auth/logout", { method: "POST" });
   },
   async getServices() {
-    return window.QueueSmartData.services;
+    const result = await apiRequest("/services");
+    return result.services.map(mapService);
   },
   async getTickets() {
-    return window.QueueSmartData.tickets;
+    const session = readAuthSession();
+    const endpoint = session?.user?.role === "admin"
+      ? "/queue/tickets"
+      : "/queue/my-tickets";
+    const result = await apiRequest(endpoint);
+    return result.tickets.map(mapTicket);
   },
-  async getStats() {
-    return window.QueueSmartData.stats;
+  async getTicket(ticketId) {
+    const result = await apiRequest("/queue/tickets/" + encodeURIComponent(ticketId));
+    return mapTicket(result.ticket);
   },
-  async joinQueue(serviceId, customerName) {
-    const service = window.QueueSmartData.services.find(
-      (item) => item.id === serviceId,
-    );
-    if (!service || service.status !== "Open")
-      throw new Error("Please choose an available service.");
-    const highestTicketNumber = window.QueueSmartData.tickets.reduce(
-      (highest, ticket) =>
-        Math.max(highest, Number(String(ticket.number).replace(/\D/g, "")) || 0),
-      24,
-    );
-    const ticket = {
-      number: "A" + String(highestTicketNumber + 1).padStart(3, "0"),
-      customer: customerName,
-      service: service.name,
-      joined: new Date().toLocaleTimeString([], {
-        hour: "2-digit",
-        minute: "2-digit",
-      }),
-      wait: service.wait + " min",
-      status: "Waiting",
-    };
-    window.QueueSmartData.tickets.unshift(ticket);
-    window.QueueSmartData.save?.();
-    return ticket;
+  async joinQueue(serviceId) {
+    const result = await apiRequest("/queue/tickets", {
+      method: "POST",
+      body: JSON.stringify({ serviceId }),
+    });
+    return mapTicket(result.ticket);
+  },
+  async leaveQueue(ticketId) {
+    const result = await apiRequest("/queue/tickets/" + encodeURIComponent(ticketId), {
+      method: "DELETE",
+    });
+    return mapTicket(result.ticket);
+  },
+  async createService(service) {
+    const result = await apiRequest("/services", {
+      method: "POST",
+      body: JSON.stringify(service),
+    });
+    return mapService(result.service);
+  },
+  async updateService(id, changes) {
+    const result = await apiRequest("/services/" + encodeURIComponent(id), {
+      method: "PUT",
+      body: JSON.stringify(changes),
+    });
+    return mapService(result.service);
   },
 };

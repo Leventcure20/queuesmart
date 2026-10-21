@@ -8,8 +8,10 @@ const { ROLES } = require('../auth/roles');
 
 const router = express.Router();
 
+router.get('/my-tickets', authenticate, queueController.listMine);
 router.get('/tickets', authenticate, requireRole(ROLES.ADMIN), queueController.list);
 router.post('/tickets', authenticate, joinQueueRules, validateRequest, queueController.join);
+router.get('/tickets/:ticketId', authenticate, leaveQueueRules, validateRequest, queueController.get);
 router.delete('/tickets/:ticketId', authenticate, leaveQueueRules, validateRequest, queueController.leave);
 
 module.exports = router;
