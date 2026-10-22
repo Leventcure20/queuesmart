@@ -38,6 +38,15 @@ function mapService(service) {
   };
 }
 
+function formatWait(seconds) {
+  const totalSeconds = Math.max(0, Math.ceil(seconds));
+  const minutes = Math.floor(totalSeconds / 60);
+  const remainingSeconds = totalSeconds % 60;
+  return minutes
+    ? `${minutes}m ${String(remainingSeconds).padStart(2, "0")}s`
+    : `${remainingSeconds}s`;
+}
+
 function mapTicket(ticket) {
   const joinedAt = new Date(ticket.joinedAt);
   const statuses = { waiting: "Waiting", cancelled: "Cancelled", serving: "Serving", served: "Completed" };
@@ -47,7 +56,7 @@ function mapTicket(ticket) {
     service: ticket.serviceName,
     joined: joinedAt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
     joinedDate: joinedAt.toLocaleDateString([], { month: "short", day: "numeric" }),
-    wait: ticket.estimatedWaitMinutes == null ? "—" : ticket.estimatedWaitMinutes + " min",
+    wait: ticket.estimatedWaitSeconds == null ? "—" : formatWait(ticket.estimatedWaitSeconds),
     status: statuses[ticket.status] || ticket.status,
   };
 }
@@ -83,6 +92,10 @@ window.QueueSmartApi = {
       : "/queue/my-tickets";
     const result = await apiRequest(endpoint);
     return result.tickets.map(mapTicket);
+  },
+  async getNotifications() {
+    const result = await apiRequest("/queue/notifications");
+    return result.notifications;
   },
   async getTicket(ticketId) {
     const result = await apiRequest("/queue/tickets/" + encodeURIComponent(ticketId));

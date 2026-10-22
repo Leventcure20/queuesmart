@@ -3,6 +3,35 @@ const { randomUUID } = require('crypto');
 // Temporary in-memory storage. Replace with a database-backed repository later.
 const services = new Map();
 
+const demoServices = [
+  {
+    id: 'S-01',
+    name: 'General Inquiry',
+    description: 'Questions and account support',
+    expectedDuration: 8,
+    priorityLevel: 'medium',
+  },
+  {
+    id: 'S-02',
+    name: 'Billing & Payments',
+    description: 'Payments, invoices, and refunds',
+    expectedDuration: 12,
+    priorityLevel: 'medium',
+  },
+  {
+    id: 'S-03',
+    name: 'Technical Support',
+    description: 'Product and technical help',
+    expectedDuration: 20,
+    priorityLevel: 'high',
+  },
+];
+
+for (const service of demoServices) {
+  const now = new Date().toISOString();
+  services.set(service.id, { ...service, createdAt: now, updatedAt: now });
+}
+
 function list() {
   return Array.from(services.values());
 }

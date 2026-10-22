@@ -161,8 +161,8 @@ const topbar = isPublic
     day: "numeric",
     year: "numeric",
   }).format(new Date());
-  const badge = (status) =>
-    `<span class="badge ${status.toLowerCase()}"><i></i>${status}</span>`;
+  const badge = (status, ticketId = null) =>
+    `<span${ticketId ? ` data-ticket-status="${ticketId}"` : ""} class="badge ${status.toLowerCase()}"><i></i>${status}</span>`;
   const tickets = (history = false) =>
     data.tickets
       .map((ticket, index) => ({ ticket, index }))
@@ -173,13 +173,43 @@ const topbar = isPublic
       )
       .map(
         ({ ticket: t, index: i }) =>
-          `<tr><td><strong class="ticket-id">${t.number}</strong></td><td>${t.customer}</td><td>${t.service}</td><td class="muted">${history ? `${t.joinedDate || todayDate} · ` : ""}${t.joined}${!history ? ` · ${t.wait} wait` : ""}</td><td>${badge(t.status)}</td>${admin && !history ? `<td class="row-actions"><button class="mini-button" data-action="remove" data-ticket-id="${t.id}" aria-label="Cancel ticket">×</button></td>` : ""}</tr>`,
+          `<tr data-ticket-row="${t.id}"><td><strong class="ticket-id">${t.number}</strong></td><td>${t.customer}</td><td>${t.service}</td><td class="muted">${history ? `${t.joinedDate || todayDate} · ` : ""}${t.joined}${!history ? ` · ${t.wait} wait` : ""}</td><td>${badge(t.status, t.id)}</td>${admin && !history ? `<td class="row-actions"><button class="mini-button" data-action="remove" data-ticket-id="${t.id}" aria-label="Cancel ticket">×</button></td>` : ""}</tr>`,
       )
       .join("");
   const table = (actions = false) =>
-    `<div class="panel"><div class="panel-heading"><div><h2>${actions ? "Selected service queue" : "Queue history"}</h2><p>${actions ? "Live tickets currently in the queue." : "Completed visits and other past outcomes"}</p></div>${actions ? `<select id="service-filter" aria-label="Filter by service"><option value="">All services</option>${data.services.map((s) => `<option>${s.name}</option>`).join("")}</select>` : ""}</div><div class="table-wrap"><table class="${actions ? "" : "history-table"}"><thead><tr><th>TICKET</th><th>CUSTOMER</th><th>SERVICE</th><th>${actions ? "JOINED · ESTIMATED WAIT" : "DATE & TIME"}</th><th>STATUS</th>${actions ? "<th>ACTIONS</th>" : ""}</tr></thead><tbody>${tickets(!actions) || '<tr><td colspan="5" class="muted">No past queue visits yet.</td></tr>'}</tbody></table></div></div>`;
-  const notificationList = (role) =>
-    `<div class="panel notification-list" id="notifications-panel" hidden><div class="panel-heading"><div><h2>Recent notifications</h2><p>Queue and status updates</p></div></div>${data.notifications[role].map((item) => `<article class="notification-row"><span class="notification-type ${item.type}">${item.type === "status" ? "✓" : item.type === "wait" ? "◷" : "≋"}</span><span class="notification-copy"><strong>${item.title}</strong><small>${item.detail}</small></span><time>${item.time}</time></article>`).join("")}</div>`;
+    `<div class="panel"><div class="panel-heading"><div><h2>${actions ? "Selected service queue" : "Queue history"}</h2><p>${actions ? "Live tickets currently in the queue." : "Completed visits and other past outcomes"}</p></div>${actions ? `<select id="service-filter" aria-label="Filter by service"><option value="">All services</option>${data.services.map((s) => `<option>${s.name}</option>`).join("")}</select>` : ""}</div><div class="table-wrap"><table class="${actions ? "" : "history-table"}"${actions ? " data-live-queue=\"true\"" : ""}><thead><tr><th>TICKET</th><th>CUSTOMER</th><th>SERVICE</th><th>${actions ? "JOINED · ESTIMATED WAIT" : "DATE & TIME"}</th><th>STATUS</th>${actions ? "<th>ACTIONS</th>" : ""}</tr></thead><tbody>${tickets(!actions) || '<tr><td colspan="5" class="muted">No past queue visits yet.</td></tr>'}</tbody></table></div></div>`;
+  const notificationList = () =>
+    `<div class="panel notification-list" id="notifications-panel" hidden><div class="panel-heading"><div><h2>Notifications</h2><p>Queue confirmations and reminders</p></div></div><div id="notification-items"><p class="muted">No notifications yet.</p></div></div>`;
+  const renderNotifications = (notifications) => {
+    const list = document.querySelector("#notification-items");
+    if (!list) return;
+    list.replaceChildren();
+    if (!notifications.length) {
+      const empty = document.createElement("p");
+      empty.className = "muted";
+      empty.textContent = "No notifications yet.";
+      list.append(empty);
+      return;
+    }
+    notifications.forEach((item) => {
+      const row = document.createElement("article");
+      row.className = "notification-row";
+      const icon = document.createElement("span");
+      icon.className = "notification-type " + (item.type === "almost_ready" ? "wait" : "status");
+      icon.textContent = item.type === "almost_ready" ? "◷" : "✓";
+      const copy = document.createElement("span");
+      copy.className = "notification-copy";
+      const title = document.createElement("strong");
+      title.textContent = item.title;
+      const message = document.createElement("small");
+      message.textContent = item.message;
+      copy.append(title, message);
+      const time = document.createElement("time");
+      time.textContent = new Date(item.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+      row.append(icon, copy, time);
+      list.append(row);
+    });
+  };
   const serviceList = (manage = false) =>
     `<div class="service-grid">${data.services.map((s, i) => {
       const waiting = data.tickets.filter((t) => t.service === s.name && ["Waiting", "Serving"].includes(t.status)).length;
@@ -187,6 +217,24 @@ const topbar = isPublic
     }).join("")}${manage ? "" : '<a class="add-service" href="join-queue.html"><span>＋</span><strong>Choose a service</strong><small>See all available queues</small></a>'}</div>`;
   const adminUsageStats = () =>
     `<section class="admin-usage-block" aria-labelledby="usage-heading"><h2 id="usage-heading">Today at a glance</h2><div class="admin-usage-stats" aria-label="Usage statistics"><article class="admin-stat-card"><span class="admin-stat-icon purple">↗</span><div><small>Completed tickets</small><strong>${data.stats.servedToday}</strong></div></article><article class="admin-stat-card"><span class="admin-stat-icon blue">◷</span><div><small>Average wait time</small><strong>${data.stats.averageWait} <span>min</span></strong></div></article><article class="admin-stat-card"><span class="admin-stat-icon green">◇</span><div><small>Open services</small><strong>${data.services.filter((service) => service.status === "Open").length} <span>of ${data.services.length}</span></strong></div></article></div></section>`;
+  const renderLiveAdminView = () => {
+    const search = document.querySelector("#ticket-search")?.value || "";
+    const selectedService = document.querySelector("#service-filter")?.value || "";
+    if (path === "admin-dashboard.html") {
+      root.innerHTML = `${adminUsageStats()}<div class="section-intro"><div><h2>Service queues</h2><p>Current queue lengths and availability.</p></div><a class="button button-secondary" href="service-management.html">Manage services →</a></div>${serviceList(true)}${table(true)}`;
+    } else if (path === "queue-management.html") {
+      root.innerHTML = `<div class="toolbar"><div class="tabs"><span class="tab active">Live queue</span></div><label class="search-box">⌕ <input id="ticket-search" placeholder="Search tickets..."></label></div>${table(true)}`;
+    } else return;
+    const searchInput = document.querySelector("#ticket-search");
+    const serviceFilter = document.querySelector("#service-filter");
+    if (searchInput) searchInput.value = search;
+    if (serviceFilter) serviceFilter.value = selectedService;
+    const query = search.trim().toLowerCase();
+    root.querySelectorAll("tbody tr").forEach((row) => {
+      const rowService = row.cells[2]?.textContent.trim() || "";
+      row.hidden = !row.textContent.toLowerCase().includes(query) || (selectedService && rowService !== selectedService);
+    });
+  };
   let markup = "";
   if (path === "index.html")
     markup = `<section class="landing-hero"><div class="landing-copy"><div class="landing-kicker"><span></span> QUEUE MANAGEMENT, MADE SIMPLE</div><h2>Your place in line,<br><em>without waiting in one.</em></h2><p>Join a queue, see your estimated wait, and know when it’s nearly your turn—all from one simple place.</p><div class="landing-ctas"><a class="button button-primary" href="join-queue.html">Join a queue <span>→</span></a><a class="landing-secondary" href="register.html">Create an account</a></div><div class="landing-note"><span class="avatar-stack"><i>Q</i><i>✓</i></span><span>Simple updates, less time wondering.</span></div></div><div class="landing-preview"><div class="preview-glow"></div><div class="preview-card"><div class="preview-top"><span class="preview-label"><i></i> QUEUE PREVIEW</span><span class="preview-menu">···</span></div><div class="preview-service"><span class="service-symbol symbol-0">◈</span><span><strong>General Inquiry</strong><small>Service queue</small></span></div><div class="preview-ticket"><span>Your ticket</span><strong>A024</strong></div><div class="preview-position"><div><strong>4<small>th</small></strong><span>in line</span></div><div><strong>~12<small> min</small></strong><span>estimated wait</span></div></div><div class="preview-progress"><span></span></div><div class="preview-update"><span>✓</span><span><strong>You’re in the queue</strong><small>We’ll let you know when you’re almost up.</small></span></div><div class="preview-watermark">A sample of your queue status</div></div><div class="preview-orbit orbit-one"></div><div class="preview-orbit orbit-two"></div></div></section><section class="landing-features"><div class="landing-section-heading"><div class="eyebrow">A BETTER WAY TO WAIT</div><h2>Know what’s happening in line.</h2></div><div class="feature-grid"><article class="feature-card"><span class="feature-icon purple">◷</span><h3>See your wait</h3><p>Check your place and estimated wait before you plan your next step.</p></article><article class="feature-card"><span class="feature-icon blue">↗</span><h3>Keep your place</h3><p>Join a service queue and follow your ticket from your device.</p></article><article class="feature-card"><span class="feature-icon green">✓</span><h3>Know when you’re close</h3><p>Get a clear status update as your turn gets closer.</p></article></div></section><section class="landing-bottom"><div><h2>Ready to get started?</h2><p>Join a queue or create an account to keep track of your visits.</p></div><a class="button button-primary" href="join-queue.html">Get started <span>→</span></a></section><footer class="landing-footer"><a href="index.html">QueueSmart</a><span>Queue management made simpler.</span><a href="admin-dashboard.html">Administrator access</a></footer>`;
@@ -203,8 +251,8 @@ const topbar = isPublic
     if (!current) {
       markup = `<div class="status-card"><h2>You have no active queue ticket</h2><p>Join a service queue to see your live position and estimated wait.</p><a class="button button-primary full-width" href="join-queue.html">Browse services</a></div>`;
     } else {
-      const position = current.status === "Serving" ? "Now serving" : current.position == null ? "—" : current.position;
-      markup = `<div class="status-card"><span class="status-check">✓</span><div class="eyebrow">LIVE QUEUE UPDATE</div><h2>Ticket <span class="ticket-id">${current.number}</span></h2><p>You’re in line for ${current.service}.</p><div class="wait-highlight"><strong>~${current.wait}</strong><span>Estimated wait time</span></div><div class="queue-position"><span>Your ticket status</span><strong>${current.status}</strong></div><div class="queue-position"><span>Your position in line</span><strong>${position}</strong></div><div class="queue-position"><span>People ahead of you</span><strong>${current.position == null ? "—" : Math.max(0, current.position - 1)}</strong></div><button class="button button-danger full-width" data-action="leave-queue" data-ticket-id="${current.id}">Leave queue</button></div>`;
+      const position = current.position == null ? "—" : current.position;
+      markup = `<div class="status-card"><span class="status-check">✓</span><div class="eyebrow">LIVE QUEUE UPDATE</div><h2>Ticket <span class="ticket-id">${current.number}</span></h2><p>You’re in line for ${current.service}.</p><div class="wait-highlight"><strong data-ticket-wait="${current.id}">~${current.wait}</strong><span>Estimated wait time</span></div><div class="queue-position"><span>Your ticket status</span><strong data-ticket-status="${current.id}">${current.status}</strong></div><div class="queue-position"><span>Your position in line</span><strong data-ticket-position="${current.id}" data-ticket-position-format="label">${position}</strong></div><div class="queue-position"><span>People ahead of you</span><strong data-ticket-ahead="${current.id}">${current.position == null ? "—" : Math.max(0, current.position - 1)}</strong></div><button class="button button-danger full-width" data-action="leave-queue" data-ticket-id="${current.id}">Leave queue</button></div>`;
     }
   } else if (path === "service-management.html")
     markup = `<div class="section-intro"><div><h2>Active services</h2><p>Create, update, and open or close queues.</p></div><button class="button button-primary" data-action="new-service">＋ Add service</button></div><div id="service-form-slot"></div>${serviceList(true)}`;
@@ -212,11 +260,12 @@ const topbar = isPublic
     markup = `<div class="toolbar"><div class="tabs"><span class="tab active">Live queue</span></div><label class="search-box">⌕ <input id="ticket-search" placeholder="Search tickets..." aria-label="Search tickets"></label></div>${table(true)}`;
   else if (path === "history.html") markup = table(false);
   else if (path === "admin-dashboard.html")
-    markup = `${adminUsageStats()}<div class="section-intro"><div><h2>Service queues</h2><p>Current queue lengths and availability.</p></div><a class="button button-secondary" href="service-management.html">Manage services →</a></div>${serviceList(true)}`;
+    markup = `${adminUsageStats()}<div class="section-intro"><div><h2>Service queues</h2><p>Current queue lengths and availability.</p></div><a class="button button-secondary" href="service-management.html">Manage services →</a></div>${serviceList(true)}${table(true)}`;
   else {
     const current = data.tickets.find((t) => ["Waiting", "Serving"].includes(t.status));
-    markup = `<div class="user-welcome"><div><h2>Welcome back, ${firstName}</h2><p>Here’s your queue activity today.</p></div><a class="button button-primary" href="join-queue.html">＋ Join a queue</a></div>${current ? `<div class="current-queue-card"><div class="panel-heading"><div><div class="eyebrow">CURRENT QUEUE</div><h2>${current.service}</h2><p>Ticket ${current.number}</p></div>${badge(current.status)}</div><div class="current-queue-stats"><div><strong>#${current.position ?? "—"}</strong><span>Position in line</span></div><div><strong>~${current.wait}</strong><span>Estimated wait</span></div><div><strong>${current.number}</strong><span>Ticket Number</span></div><a class="button button-primary" href="queue-status.html">View Status →</a></div></div>` : `<div class="current-queue-card"><h2>No active queue</h2><p>Join a service to see your ticket and wait estimate here.</p></div>`}<div class="section-intro"><div><h2>Available services</h2><p>Join a service queue and track your wait.</p></div></div>${serviceList(false)}<div class="panel recent-history"><div class="panel-heading"><div><h2>Your recent queues</h2><p>Past and current visits</p></div><a href="history.html" class="text-link">View history →</a></div><div class="table-wrap"><table><thead><tr><th>TICKET</th><th>SERVICE</th><th>JOINED</th><th>STATUS</th></tr></thead><tbody>${data.tickets.slice(0, 3).map((t) => `<tr><td class="ticket-id">${t.number}</td><td>${t.service}</td><td>${t.joined}</td><td>${badge(t.status)}</td></tr>`).join("") || '<tr><td colspan="4" class="muted">No queue visits yet.</td></tr>'}</tbody></table></div></div>`;
+    markup = `<div class="user-welcome"><div><h2>Welcome back, ${firstName}</h2><p>Here’s your queue activity today.</p></div><a class="button button-primary" href="join-queue.html">＋ Join a queue</a></div>${current ? `<div class="current-queue-card"><div class="panel-heading"><div><div class="eyebrow">CURRENT QUEUE</div><h2>${current.service}</h2><p>Ticket ${current.number}</p></div>${badge(current.status, current.id)}</div><div class="current-queue-stats"><div><strong data-ticket-position="${current.id}" data-ticket-position-format="number">#${current.position ?? "—"}</strong><span>Position in line</span></div><div><strong data-ticket-wait="${current.id}">~${current.wait}</strong><span>Estimated wait</span></div><div><strong>${current.number}</strong><span>Ticket Number</span></div><a class="button button-primary" href="queue-status.html">View Status →</a></div></div>` : `<div class="current-queue-card"><h2>No active queue</h2><p>Join a service to see your ticket and wait estimate here.</p></div>`}<div class="section-intro"><div><h2>Available services</h2><p>Join a service queue and track your wait.</p></div></div>${serviceList(false)}<div class="panel recent-history"><div class="panel-heading"><div><h2>Your recent queues</h2><p>Past and current visits</p></div><a href="history.html" class="text-link">View history →</a></div><div class="table-wrap"><table><thead><tr><th>TICKET</th><th>SERVICE</th><th>JOINED</th><th>STATUS</th></tr></thead><tbody>${data.tickets.slice(0, 3).map((t) => `<tr><td class="ticket-id">${t.number}</td><td>${t.service}</td><td>${t.joined}</td><td>${badge(t.status)}</td></tr>`).join("") || '<tr><td colspan="4" class="muted">No queue visits yet.</td></tr>'}</tbody></table></div></div>`;
   }
+  if (!isPublic) document.querySelector(".topbar").insertAdjacentHTML("afterend", notificationList());
   root.innerHTML = markup;
   const themeToggle = document.querySelector("#theme-toggle");
   const updateThemeToggle = () => {
@@ -287,6 +336,57 @@ const topbar = isPublic
       2500,
     );
   };
+  if (!isPublic && signedInUser?.id) {
+    const seenKey = "QueueSmartSeenNotifications:" + signedInUser.id;
+    let seen = new Set();
+    try { seen = new Set(JSON.parse(localStorage.getItem(seenKey) || "[]")); } catch {}
+    const pollNotifications = async () => {
+      try {
+        const [notifications, tickets, services] = await Promise.all([
+          window.QueueSmartApi.getNotifications(),
+          window.QueueSmartApi.getTickets(),
+          window.QueueSmartApi.getServices(),
+        ]);
+        data.tickets = tickets;
+        data.services = services;
+        data.stats = {
+          servedToday: tickets.filter((ticket) => ticket.status === "Completed").length,
+          averageWait: tickets.filter((ticket) => ticket.estimatedWaitMinutes != null).length
+            ? Math.round(tickets.filter((ticket) => ticket.estimatedWaitMinutes != null).reduce((sum, ticket) => sum + ticket.estimatedWaitMinutes, 0) / tickets.filter((ticket) => ticket.estimatedWaitMinutes != null).length)
+            : 0,
+        };
+        if (admin) renderLiveAdminView();
+        renderNotifications(notifications);
+        tickets.forEach((ticket) => {
+          const waitElement = document.querySelector(`[data-ticket-wait="${ticket.id}"]`);
+          if (waitElement) waitElement.textContent = `~${ticket.wait}`;
+          const statusElement = document.querySelector(`[data-ticket-status="${ticket.id}"]`);
+          if (statusElement) {
+            statusElement.textContent = ticket.status;
+            if (statusElement.classList.contains("badge")) statusElement.className = `badge ${ticket.status.toLowerCase()}`;
+          }
+          const ticketRow = document.querySelector(`[data-ticket-row="${ticket.id}"]`);
+          if (ticketRow?.closest(`[data-live-queue="true"]`) && !["Waiting", "Serving"].includes(ticket.status)) ticketRow.remove();
+          const positionElement = document.querySelector(`[data-ticket-position="${ticket.id}"]`);
+          if (positionElement) {
+            const position = ticket.position ?? "—";
+            positionElement.textContent = positionElement.dataset.ticketPositionFormat === "number" ? `#${position}` : position;
+          }
+          const aheadElement = document.querySelector(`[data-ticket-ahead="${ticket.id}"]`);
+          if (aheadElement) aheadElement.textContent = ticket.position == null ? "—" : Math.max(0, ticket.position - 1);
+        });
+        const fresh = notifications.filter((item) => !seen.has(item.id));
+        if (!fresh.length) return;
+        fresh.forEach((item) => seen.add(item.id));
+        localStorage.setItem(seenKey, JSON.stringify(Array.from(seen).slice(-100)));
+        fresh.reverse().forEach((item, index) => {
+          setTimeout(() => toast(item.message), index * 2600);
+        });
+      } catch { /* Notifications can be retried on the next poll. */ }
+    };
+    pollNotifications();
+    window.queueNotificationTimer = setInterval(pollNotifications, 5000);
+  }
   document.addEventListener("click", async (event) => {
     const target = event.target.closest("[data-toast],[data-action]");
     if (!target) return;
@@ -385,7 +485,7 @@ const topbar = isPublic
       const s = data.services.find((item) => item.id === e.target.value);
       const peopleAhead = data.tickets.filter((ticket) => ticket.service === s?.name && ["Waiting", "Serving"].includes(ticket.status)).length;
       document.querySelector("#wait-preview").textContent = s
-        ? `Estimated wait: about ${(peopleAhead + 1) * s.duration} minutes.`
+        ? `Estimated wait: about ${peopleAhead * s.duration} minutes.`
         : "Select a service to see the estimated wait.";
     }
   });
