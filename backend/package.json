@@ -6,12 +6,17 @@
   "main": "src/server.js",
   "scripts": {
     "start": "node src/server.js",
-    "dev": "node --watch src/server.js"
+    "dev": "node --watch src/server.js",
+    "test": "node --test",
+    "test:coverage": "node --test --experimental-test-coverage --test-coverage-include=src/** --test-coverage-exclude=src/server.js --test-coverage-exclude=src/config/**"
   },
   "dependencies": {
     "bcrypt": "^6.0.0",
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
     "express-validator": "^7.2.1"
+  },
+  "engines": {
+    "node": ">=22.13.0"
   }
 }

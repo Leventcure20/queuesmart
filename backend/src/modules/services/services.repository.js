@@ -51,7 +51,12 @@ function update(id, changes) {
   const current = services.get(id);
   if (!current) return null;
 
-  const service = { ...current, ...changes, updatedAt: new Date().toISOString() };
+  const editableChanges = Object.fromEntries(
+    ['name', 'description', 'expectedDuration', 'priorityLevel']
+      .filter((field) => Object.hasOwn(changes, field))
+      .map((field) => [field, changes[field]])
+  );
+  const service = { ...current, ...editableChanges, updatedAt: new Date().toISOString() };
   services.set(id, service);
   return service;
 }

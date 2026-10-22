@@ -1,6 +1,7 @@
 const { body, param } = require('express-validator');
 
 const priorityLevels = ['low', 'medium', 'high'];
+const serviceFields = ['name', 'description', 'expectedDuration', 'priorityLevel'];
 
 const createServiceRules = [
   body('name').trim().notEmpty().withMessage('Service name is required'),
@@ -16,6 +17,8 @@ const updateServiceRules = [
   body('expectedDuration').optional().isInt({ min: 1 }).withMessage('Expected duration must be a positive number of minutes').toInt(),
   body('priorityLevel').optional().isIn(priorityLevels).withMessage(`Priority level must be one of: ${priorityLevels.join(', ')}`),
   body().custom((_value, { req }) => Object.keys(req.body).length > 0).withMessage('At least one service field must be provided'),
+  body().custom((_value, { req }) => Object.keys(req.body).every((field) => serviceFields.includes(field)))
+    .withMessage('Only name, description, expectedDuration, and priorityLevel can be updated'),
 ];
 
 module.exports = { createServiceRules, updateServiceRules };

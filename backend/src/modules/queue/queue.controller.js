@@ -115,6 +115,7 @@ function listNotifications(req, res) {
 }
 
 function leave(req, res) {
+  syncQueueProgress();
   const existing = queueRepository.findById(req.params.ticketId);
   if (!existing) return res.status(404).json({ error: 'Ticket not found' });
   if (existing.userId !== req.user.id && req.user.role !== ROLES.ADMIN) {

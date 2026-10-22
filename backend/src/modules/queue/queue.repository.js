@@ -32,7 +32,15 @@ function advanceService(serviceId, expectedDurationMinutes, now = Date.now()) {
   let previousEndAt = null;
 
   for (const ticket of serviceTickets) {
-    if (ticket.status === 'cancelled') continue;
+    if (ticket.status === 'cancelled') {
+      // Time already spent serving still counts when an active ticket leaves.
+      const startedAt = Date.parse(ticket.serviceStartedAt);
+      const leftAt = Date.parse(ticket.leftAt);
+      if (Number.isFinite(startedAt) && Number.isFinite(leftAt)) {
+        previousEndAt = Math.max(previousEndAt ?? leftAt, leftAt);
+      }
+      continue;
+    }
     if (ticket.status === 'served') {
       const servedAt = Date.parse(ticket.servedAt);
       if (Number.isFinite(servedAt)) previousEndAt = servedAt;
