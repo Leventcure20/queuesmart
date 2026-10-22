@@ -173,7 +173,7 @@ const topbar = isPublic
       )
       .map(
         ({ ticket: t, index: i }) =>
-          `<tr data-ticket-row="${t.id}"><td><strong class="ticket-id">${t.number}</strong></td><td>${t.customer}</td><td>${t.service}</td><td class="muted">${history ? `${t.joinedDate || todayDate} · ` : ""}${t.joined}${!history ? ` · ${t.wait} wait` : ""}</td><td>${badge(t.status, t.id)}</td>${admin && !history ? `<td class="row-actions"><button class="mini-button" data-action="remove" data-ticket-id="${t.id}" aria-label="Cancel ticket">×</button></td>` : ""}</tr>`,
+          `<tr data-ticket-row="${t.id}"><td><strong class="ticket-id">${t.number}</strong></td><td>${t.customer}</td><td>${t.service}</td><td class="muted">${history ? `${t.joinedDate || todayDate} · ` : ""}${t.joined}${!history ? ` · ${t.wait} wait` : ""}</td><td>${badge(history ? (t.outcome || t.status) : t.status, t.id)}</td>${admin && !history ? `<td class="row-actions"><button class="mini-button" data-action="remove" data-ticket-id="${t.id}" aria-label="Cancel ticket">×</button></td>` : ""}</tr>`,
       )
       .join("");
   const table = (actions = false) =>

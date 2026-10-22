@@ -58,6 +58,7 @@ function mapTicket(ticket) {
     joinedDate: joinedAt.toLocaleDateString([], { month: "short", day: "numeric" }),
     wait: ticket.estimatedWaitSeconds == null ? "—" : formatWait(ticket.estimatedWaitSeconds),
     status: statuses[ticket.status] || ticket.status,
+    outcome: ticket.status === "served" ? "Served" : ticket.status === "cancelled" ? (ticket.cancellationReason === "removed" ? "Removed" : "Left") : statuses[ticket.status] || ticket.status,
   };
 }
 

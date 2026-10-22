@@ -121,9 +121,9 @@ function leave(req, res) {
     return res.status(403).json({ error: 'You can only leave your own ticket' });
   }
   const removedByAdmin = req.user.role === ROLES.ADMIN && existing.userId !== req.user.id;
-  const ticket = queueRepository.leave(req.params.ticketId);
+  const ticket = queueRepository.leave(req.params.ticketId, removedByAdmin ? 'removed' : 'left');
   if (ticket.cannotLeave) {
-    return res.status(409).json({ error: 'Only waiting tickets can leave the queue' });
+    return res.status(409).json({ error: 'Only active tickets can leave the queue' });
   }
   notificationsRepository.create({
     userId: existing.userId,

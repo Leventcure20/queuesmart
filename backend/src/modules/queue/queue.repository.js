@@ -102,14 +102,15 @@ function join({ userId, customerName, service }) {
   return ticket;
 }
 
-function leave(id) {
+function leave(id, reason = 'left') {
   const ticket = tickets.get(id);
   if (!ticket) return null;
-  if (ticket.status !== 'waiting') return { ...ticket, cannotLeave: true };
+  if (!['waiting', 'serving'].includes(ticket.status)) return { ...ticket, cannotLeave: true };
 
   const updated = {
     ...ticket,
     status: 'cancelled',
+    cancellationReason: reason,
     leftAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   };
