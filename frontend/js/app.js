@@ -210,10 +210,10 @@ const topbar = isPublic
       list.append(row);
     });
   };
-  const serviceList = (manage = false) =>
+  const serviceList = (manage = false, allowActions = manage) =>
     `<div class="service-grid">${data.services.map((s, i) => {
       const waiting = data.tickets.filter((t) => t.service === s.name && ["Waiting", "Serving"].includes(t.status)).length;
-      return `<article class="service-card"><div class="service-card-top"><span class="service-symbol symbol-${i % 3}">${["◈", "＄", "⌘"][i % 3]}</span>${badge("Open")}</div><h3>${s.name}</h3><p>${s.description}</p><div class="service-metrics"><span><strong>${s.duration} min</strong><small>Expected duration</small></span><span><strong>${waiting} people</strong><small>In this queue</small></span></div>${manage ? `<div class="card-actions"><button class="button button-secondary" data-action="edit-service" data-index="${i}">Edit</button></div>` : `<a class="button button-primary full-width" href="join-queue.html?service=${encodeURIComponent(s.id)}">Join queue →</a>`}</article>`;
+      return `<article class="service-card"><div class="service-card-top"><span class="service-symbol symbol-${i % 3}">${["◈", "＄", "⌘"][i % 3]}</span>${badge("Open")}</div><h3>${s.name}</h3><p>${s.description}</p>${manage ? `<p class="service-priority">Priority: <strong>${(s.priority || "medium").charAt(0).toUpperCase() + (s.priority || "medium").slice(1)}</strong></p>` : ""}<div class="service-metrics"><span><strong>${s.duration} min</strong><small>Expected duration</small></span><span><strong>${waiting} people</strong><small>In this queue</small></span></div>${allowActions ? `<div class="card-actions"><button class="button button-secondary" data-action="edit-service" data-index="${i}">Edit</button><button class="button button-secondary" data-action="delete-service" data-service-id="${s.id}">Delete</button></div>` : manage ? "" : `<a class="button button-primary full-width" href="join-queue.html?service=${encodeURIComponent(s.id)}">Join queue →</a>`}</article>`;
     }).join("")}${manage ? "" : '<a class="add-service" href="join-queue.html"><span>＋</span><strong>Choose a service</strong><small>See all available queues</small></a>'}</div>`;
   const adminUsageStats = () =>
     `<section class="admin-usage-block" aria-labelledby="usage-heading"><h2 id="usage-heading">Today at a glance</h2><div class="admin-usage-stats" aria-label="Usage statistics"><article class="admin-stat-card"><span class="admin-stat-icon purple">↗</span><div><small>Completed tickets</small><strong>${data.stats.servedToday}</strong></div></article><article class="admin-stat-card"><span class="admin-stat-icon blue">◷</span><div><small>Average wait time</small><strong>${data.stats.averageWait} <span>min</span></strong></div></article><article class="admin-stat-card"><span class="admin-stat-icon green">◇</span><div><small>Open services</small><strong>${data.services.filter((service) => service.status === "Open").length} <span>of ${data.services.length}</span></strong></div></article></div></section>`;
@@ -221,7 +221,7 @@ const topbar = isPublic
     const search = document.querySelector("#ticket-search")?.value || "";
     const selectedService = document.querySelector("#service-filter")?.value || "";
     if (path === "admin-dashboard.html") {
-      root.innerHTML = `${adminUsageStats()}<div class="section-intro"><div><h2>Service queues</h2><p>Current queue lengths and availability.</p></div><a class="button button-secondary" href="service-management.html">Manage services →</a></div>${serviceList(true)}${table(true)}`;
+      root.innerHTML = `${adminUsageStats()}<div class="section-intro"><div><h2>Service queues</h2><p>Current queue lengths and availability.</p></div><a class="button button-secondary" href="service-management.html">Manage services →</a></div>${serviceList(true, false)}${table(true)}`;
     } else if (path === "queue-management.html") {
       root.innerHTML = `<div class="toolbar"><div class="tabs"><span class="tab active">Live queue</span></div><label class="search-box">⌕ <input id="ticket-search" placeholder="Search tickets..."></label></div>${table(true)}`;
     } else return;
@@ -260,7 +260,7 @@ const topbar = isPublic
     markup = `<div class="toolbar"><div class="tabs"><span class="tab active">Live queue</span></div><label class="search-box">⌕ <input id="ticket-search" placeholder="Search tickets..." aria-label="Search tickets"></label></div>${table(true)}`;
   else if (path === "history.html") markup = table(false);
   else if (path === "admin-dashboard.html")
-    markup = `${adminUsageStats()}<div class="section-intro"><div><h2>Service queues</h2><p>Current queue lengths and availability.</p></div><a class="button button-secondary" href="service-management.html">Manage services →</a></div>${serviceList(true)}${table(true)}`;
+    markup = `${adminUsageStats()}<div class="section-intro"><div><h2>Service queues</h2><p>Current queue lengths and availability.</p></div><a class="button button-secondary" href="service-management.html">Manage services →</a></div>${serviceList(true, false)}${table(true)}`;
   else {
     const current = data.tickets.find((t) => ["Waiting", "Serving"].includes(t.status));
     markup = `<div class="user-welcome"><div><h2>Welcome back, ${firstName}</h2><p>Here’s your queue activity today.</p></div><a class="button button-primary" href="join-queue.html">＋ Join a queue</a></div>${current ? `<div class="current-queue-card"><div class="panel-heading"><div><div class="eyebrow">CURRENT QUEUE</div><h2>${current.service}</h2><p>Ticket ${current.number}</p></div>${badge(current.status, current.id)}</div><div class="current-queue-stats"><div><strong data-ticket-position="${current.id}" data-ticket-position-format="number">#${current.position ?? "—"}</strong><span>Position in line</span></div><div><strong data-ticket-wait="${current.id}">~${current.wait}</strong><span>Estimated wait</span></div><div><strong>${current.number}</strong><span>Ticket Number</span></div><a class="button button-primary" href="queue-status.html">View Status →</a></div></div>` : `<div class="current-queue-card"><h2>No active queue</h2><p>Join a service to see your ticket and wait estimate here.</p></div>`}<div class="section-intro"><div><h2>Available services</h2><p>Join a service queue and track your wait.</p></div></div>${serviceList(false)}<div class="panel recent-history"><div class="panel-heading"><div><h2>Your recent queues</h2><p>Past and current visits</p></div><a href="history.html" class="text-link">View history →</a></div><div class="table-wrap"><table><thead><tr><th>TICKET</th><th>SERVICE</th><th>JOINED</th><th>STATUS</th></tr></thead><tbody>${data.tickets.slice(0, 3).map((t) => `<tr><td class="ticket-id">${t.number}</td><td>${t.service}</td><td>${t.joined}</td><td>${badge(t.status)}</td></tr>`).join("") || '<tr><td colspan="4" class="muted">No queue visits yet.</td></tr>'}</tbody></table></div></div>`;
@@ -440,6 +440,15 @@ const topbar = isPublic
         sessionStorage.removeItem("queueTicket");
         location.href = "dashboard.html";
       } catch (error) { toast(error.message); }
+    }
+    if (action === "delete-service") {
+      const service = data.services.find((item) => item.id === target.dataset.serviceId);
+      if (!service || !window.confirm(`Delete ${service.name}?`)) return;
+      try {
+        await window.QueueSmartApi.deleteService(service.id);
+        location.reload();
+      } catch (error) { toast(error.message); }
+      return;
     }
     if (action === "new-service" || action === "edit-service")
       showServiceForm(action === "edit-service" ? index : null);

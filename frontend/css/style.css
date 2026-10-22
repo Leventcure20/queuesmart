@@ -743,6 +743,17 @@ tbody tr:hover {
   justify-content: space-between
 }
 
+.service-priority {
+  margin: 0 0 12px;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.service-priority strong {
+  color: var(--ink);
+  font-weight: 700;
+}
+
 .service-card h3 {
   font: 700 13px Manrope, sans-serif;
   margin: 15px 0 5px
@@ -2586,6 +2597,10 @@ tbody tr:hover {
 
 .admin-dashboard-page .service-grid {
   gap: 18px
+}
+
+.admin-dashboard-page .service-grid + .panel {
+  margin-top: 24px
 }
 
 .admin-dashboard-page .service-card {

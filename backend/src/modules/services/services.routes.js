@@ -11,5 +11,6 @@ const router = express.Router();
 router.get('/', servicesController.list);
 router.post('/', authenticate, requireRole(ROLES.ADMIN), createServiceRules, validateRequest, servicesController.create);
 router.put('/:id', authenticate, requireRole(ROLES.ADMIN), updateServiceRules, validateRequest, servicesController.update);
+router.delete('/:id', authenticate, requireRole(ROLES.ADMIN), servicesController.remove);
 
 module.exports = router;

@@ -129,4 +129,7 @@ window.QueueSmartApi = {
     });
     return mapService(result.service);
   },
+  async deleteService(id) {
+    return apiRequest("/services/" + encodeURIComponent(id), { method: "DELETE" });
+  },
 };

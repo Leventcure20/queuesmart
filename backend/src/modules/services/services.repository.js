@@ -56,4 +56,8 @@ function update(id, changes) {
   return service;
 }
 
-module.exports = { list, findById, create, update };
+function remove(id) {
+  return services.delete(id);
+}
+
+module.exports = { list, findById, create, update, remove };
