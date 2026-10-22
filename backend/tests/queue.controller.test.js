@@ -100,6 +100,18 @@ test('wait estimates round up partial seconds and almost-ready notifications sta
   assert.equal(notifications.listForUser(bob.id).filter((item) => item.type === 'almost_ready').length, 1);
 });
 
+test('tickets without a scheduled start time omit wait estimates and almost-ready reminders', (t) => {
+  const { controller, queue, notifications } = setup(t);
+  queue.advanceService = () => ({ started: [], served: [] });
+
+  const ticket = join(controller);
+  assert.equal(ticket.status, 'waiting');
+  assert.equal(ticket.position, 1);
+  assert.equal(ticket.estimatedWaitSeconds, null);
+  assert.equal(ticket.estimatedWaitMinutes, null);
+  assert.deepEqual(notifications.listForUser(alice.id).map((item) => item.type), ['joined']);
+});
+
 test('polling at completion advances position and emits each turn notification once', (t) => {
   const { controller, notifications } = setup(t);
   const first = join(controller);
