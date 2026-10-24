@@ -92,6 +92,41 @@ function advanceService(serviceId, expectedDurationMinutes, now = Date.now()) {
   return { started, served };
 }
 
+// Complete the ticket that was serving when the administrator acted, then
+// reschedule the remaining queue. Automatic advancement stays in place.
+function serveNext(serviceId, expectedDurationMinutes, now = Date.now()) {
+  // Capture the current ticket BEFORE catching up the automatic scheduler.
+  // Otherwise an expired ticket could be completed automatically and the
+  // administrator's click could accidentally complete its successor too.
+  const current = Array.from(tickets.values()).find((ticket) =>
+    ticket.serviceId === serviceId && ticket.status === 'serving'
+  );
+  const automatic = advanceService(serviceId, expectedDurationMinutes, now);
+  const stillServing = current && tickets.get(current.id)?.status === 'serving';
+
+  if (!stillServing) {
+    return { ticket: null, started: automatic.started, served: automatic.served };
+  }
+
+  const completedAt = new Date(now).toISOString();
+  const completed = {
+    ...tickets.get(current.id),
+    status: 'served',
+    servedAt: completedAt,
+    updatedAt: completedAt,
+  };
+  tickets.set(completed.id, completed);
+
+  // A manually completed ticket is already recognized by advanceService:
+  // the next ticket starts at its real completion time, not the old estimate.
+  const next = advanceService(serviceId, expectedDurationMinutes, now);
+  return {
+    ticket: completed,
+    started: [...automatic.started, ...next.started],
+    served: [...automatic.served, ...next.served],
+  };
+}
+
 function join({ userId, customerName, service }) {
   const now = new Date().toISOString();
   const ticket = {
@@ -126,4 +161,4 @@ function leave(id, reason = 'left') {
   return updated;
 }
 
-module.exports = { list, findById, getPosition, advanceService, join, leave };
+module.exports = { list, findById, getPosition, advanceService, serveNext, join, leave };
