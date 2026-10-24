@@ -115,6 +115,12 @@ window.QueueSmartApi = {
     });
     return mapTicket(result.ticket);
   },
+  async serveNext(serviceId) {
+    return apiRequest("/queue/serve-next", {
+      method : "POST",
+      body: JSON.stringify({ serviceId }),
+    });
+  },
   async createService(service) {
     const result = await apiRequest("/services", {
       method: "POST",

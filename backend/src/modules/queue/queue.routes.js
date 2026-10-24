@@ -8,6 +8,13 @@ const { ROLES } = require('../auth/roles');
 
 const router = express.Router();
 
+router.post(
+    "/serve-next",
+    authenticate,
+    requireRole(ROLES.ADMIN),
+    queueController.serveNext
+);
+
 router.get('/my-tickets', authenticate, queueController.listMine);
 router.get('/notifications', authenticate, queueController.listNotifications);
 router.get('/tickets', authenticate, requireRole(ROLES.ADMIN), queueController.list);

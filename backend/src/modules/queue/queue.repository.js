@@ -1,4 +1,4 @@
-const { randomUUID } = require('crypto');
+const { randomUUID } = require("crypto");
 
 // Temporary in-memory queue tickets. Replace with database storage later.
 const tickets = new Map();
@@ -14,10 +14,12 @@ function findById(id) {
 
 function getPosition(id) {
   const ticket = tickets.get(id);
-  if (!ticket || !['waiting', 'serving'].includes(ticket.status)) return null;
+  if (!ticket || !["waiting", "serving"].includes(ticket.status)) return null;
 
-  const activeForService = Array.from(tickets.values()).filter((candidate) =>
-    candidate.serviceId === ticket.serviceId && ['waiting', 'serving'].includes(candidate.status)
+  const activeForService = Array.from(tickets.values()).filter(
+    (candidate) =>
+      candidate.serviceId === ticket.serviceId &&
+      ["waiting", "serving"].includes(candidate.status),
   );
   return activeForService.findIndex((candidate) => candidate.id === id) + 1;
 }
@@ -32,7 +34,7 @@ function advanceService(serviceId, expectedDurationMinutes, now = Date.now()) {
   let previousEndAt = null;
 
   for (const ticket of serviceTickets) {
-    if (ticket.status === 'cancelled') {
+    if (ticket.status === "cancelled") {
       // Time already spent serving still counts when an active ticket leaves.
       const startedAt = Date.parse(ticket.serviceStartedAt);
       const leftAt = Date.parse(ticket.leftAt);
@@ -41,7 +43,7 @@ function advanceService(serviceId, expectedDurationMinutes, now = Date.now()) {
       }
       continue;
     }
-    if (ticket.status === 'served') {
+    if (ticket.status === "served") {
       const servedAt = Date.parse(ticket.servedAt);
       if (Number.isFinite(servedAt)) previousEndAt = servedAt;
       continue;
@@ -58,29 +60,32 @@ function advanceService(serviceId, expectedDurationMinutes, now = Date.now()) {
     };
 
     if (now >= scheduledEndAt) {
-      updates.status = 'served';
+      updates.status = "served";
       updates.serviceStartedAt = new Date(scheduledStartAt).toISOString();
       updates.servedAt = new Date(scheduledEndAt).toISOString();
       updates.updatedAt = new Date(now).toISOString();
-      if (previousStatus !== 'served') {
+      if (previousStatus !== "served") {
         served.push(updates);
-        if (previousStatus === 'waiting') started.push(updates);
+        if (previousStatus === "waiting") started.push(updates);
       }
       tickets.set(ticket.id, updates);
     } else if (now >= scheduledStartAt) {
-      updates.status = 'serving';
+      updates.status = "serving";
       updates.serviceStartedAt = new Date(scheduledStartAt).toISOString();
       updates.servedAt = null;
-      if (previousStatus !== 'serving') {
+      if (previousStatus !== "serving") {
         updates.updatedAt = new Date(now).toISOString();
-        if (previousStatus === 'waiting') started.push(updates);
+        if (previousStatus === "waiting") started.push(updates);
       }
       tickets.set(ticket.id, updates);
     } else {
-      updates.status = 'waiting';
+      updates.status = "waiting";
       updates.serviceStartedAt = null;
       updates.servedAt = null;
-      if (previousStatus !== 'waiting' || ticket.scheduledStartAt !== updates.scheduledStartAt) {
+      if (
+        previousStatus !== "waiting" ||
+        ticket.scheduledStartAt !== updates.scheduledStartAt
+      ) {
         updates.updatedAt = new Date(now).toISOString();
       }
       tickets.set(ticket.id, updates);
@@ -96,12 +101,12 @@ function join({ userId, customerName, service }) {
   const now = new Date().toISOString();
   const ticket = {
     id: randomUUID(),
-    number: `Q${String(nextTicketNumber++).padStart(3, '0')}`,
+    number: `Q${String(nextTicketNumber++).padStart(3, "0")}`,
     customerName,
     userId,
     serviceId: service.id,
     serviceName: service.name,
-    status: 'waiting',
+    status: "waiting",
     joinedAt: now,
     createdAt: now,
     updatedAt: now,
@@ -110,14 +115,15 @@ function join({ userId, customerName, service }) {
   return ticket;
 }
 
-function leave(id, reason = 'left') {
+function leave(id, reason = "left") {
   const ticket = tickets.get(id);
   if (!ticket) return null;
-  if (!['waiting', 'serving'].includes(ticket.status)) return { ...ticket, cannotLeave: true };
+  if (!["waiting", "serving"].includes(ticket.status))
+    return { ...ticket, cannotLeave: true };
 
   const updated = {
     ...ticket,
-    status: 'cancelled',
+    status: "cancelled",
     cancellationReason: reason,
     leftAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
@@ -125,5 +131,49 @@ function leave(id, reason = 'left') {
   tickets.set(id, updated);
   return updated;
 }
+function serveNext(serviceID, expectedDurationMinutes, now = Date.now()) {
+  advanceService(serviceID, expectedDurationMinutes, now);
 
-module.exports = { list, findById, getPosition, advanceService, join, leave };
+  const active = list().filter(
+    (ticket) =>
+      ticket.serviceId === serviceID &&
+      ["waiting", "serving"].includes(ticket.status),
+  );
+
+  const current = active.find((ticket) => ticket.status === "serving");
+  if (!current) return null;
+
+  const timestamp = new Date().toISOString();
+
+  const completed = {
+    ...current,
+    status: "served",
+    servedAt: timestamp,
+    updatedAt: timestamp,
+  };
+
+  tickets.set(current.id, completed);
+
+  const transition = advanceService(serviceID, expectedDurationMinutes, now);
+
+  const next =
+    list().find(
+      (ticket) => ticket.serviceId === serviceID && ticket.status === "serving",
+    ) || null;
+
+  return {
+    completed,
+    next,
+    started: transition.started,
+  };
+}
+
+module.exports = {
+  list,
+  findById,
+  getPosition,
+  advanceService,
+  join,
+  leave,
+  serveNext,
+};
