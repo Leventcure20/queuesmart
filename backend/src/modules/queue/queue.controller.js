@@ -30,18 +30,22 @@ function withWaitEstimate(ticket) {
   };
 }
 
+function notifyStarted(tickets) {
+  for (const ticket of tickets) {
+    notificationsRepository.create({
+      userId: ticket.userId,
+      ticket,
+      type: 'your_turn',
+      title: 'It’s your turn',
+      message: `Ticket ${ticket.number} for ${ticket.serviceName} is now being served.`,
+    });
+  }
+}
+
 function syncQueueProgress() {
   for (const service of servicesRepository.list()) {
     const transitions = queueRepository.advanceService(service.id, service.expectedDuration);
-    for (const ticket of transitions.started) {
-      notificationsRepository.create({
-        userId: ticket.userId,
-        ticket,
-        type: 'your_turn',
-        title: 'It’s your turn',
-        message: `Ticket ${ticket.number} for ${ticket.serviceName} is now being served.`,
-      });
-    }
+    notifyStarted(transitions.started);
   }
 }
 
@@ -140,4 +144,29 @@ function leave(req, res) {
   return res.json({ ticket: withWaitEstimate(ticket) });
 }
 
-module.exports = { list, listMine, listNotifications, get, join, leave };
+// Administrators can finish the current ticket early without disabling the
+// existing time-based scheduler. The repository synchronizes both transitions.
+function serveNext(req, res) {
+  const service = servicesRepository.findById(req.params.serviceId);
+  if (!service) return res.status(404).json({ error: 'Service not found' });
+
+  // Do not call syncQueueProgress() first: the repository must distinguish a
+  // still-serving ticket from one whose expected time has already elapsed.
+  const result = queueRepository.serveNext(service.id, service.expectedDuration);
+  notifyStarted(result.started);
+  syncCloseNotifications();
+
+  if (!result.ticket) {
+    return res.status(409).json({ error: 'No currently serving ticket to complete' });
+  }
+
+  const next = queueRepository.list().find((ticket) =>
+    ticket.serviceId === service.id && ticket.status === 'serving'
+  );
+  return res.json({
+    ticket: withWaitEstimate(result.ticket),
+    nextTicket: next ? withWaitEstimate(next) : null,
+  });
+}
+
+module.exports = { list, listMine, listNotifications, get, join, leave, serveNext };
