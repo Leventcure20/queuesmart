@@ -34,25 +34,21 @@ function withWaitEstimate(ticket) {
   };
 }
 
-function notifyStarted(tickets) {
-  for (const ticket of tickets) {
-    notificationsRepository.create({
-      userId: ticket.userId,
-      ticket,
-      type: "your_turn",
-      title: "It’s your turn",
-      message: `Ticket ${ticket.number} for ${ticket.serviceName} is now being served.`,
-    });
-  }
-}
-
 function syncQueueProgress() {
   for (const service of servicesRepository.list()) {
     const transitions = queueRepository.advanceService(
       service.id,
       service.expectedDuration,
     );
-    notifyStarted(transitions.started);
+    for (const ticket of transitions.started) {
+      notificationsRepository.create({
+        userId: ticket.userId,
+        ticket,
+        type: "your_turn",
+        title: "It’s your turn",
+        message: `Ticket ${ticket.number} for ${ticket.serviceName} is now being served.`,
+      });
+    }
   }
 }
 
@@ -170,14 +166,13 @@ function leave(req, res) {
 }
 
 function serveNext(req, res) {
-  const serviceId = req.params.serviceId || req.body?.serviceId;
-  const service = servicesRepository.findById(serviceId);
+  const service = servicesRepository.findById(req.body.serviceId);
 
   if (!service) {
-    return res.status(404).json({
-      error: "Service not found",
-    });
+    return res.status(404).json({ error: "Service not found" });
   }
+
+  syncQueueProgress();
 
   const result = queueRepository.serveNext(
     service.id,
@@ -185,52 +180,25 @@ function serveNext(req, res) {
   );
 
   if (!result) {
-    return res.status(409).json({
-      error: "No currently serving ticket to complete",
+    return res.status(404).json({
+      error: "No active ticket to serve next",
     });
   }
 
-  const completed = result.completed || result.ticket || null;
-
-  if (Array.isArray(result.started)) {
-    notifyStarted(result.started);
+  for (const ticket of result.started) {
+    notificationsRepository.create({
+      userId: ticket.userID,
+      ticket,
+      type: "your_turn",
+      title: "It's your turn",
+      message: `Ticket ${ticket.number} for ${ticket.serviceName} is now being served.`,
+    });
   }
-
   syncCloseNotifications();
-
-  if (!completed) {
-    return res.status(409).json({
-      error: "No currently serving ticket to complete",
-    });
-  }
-
-  const next =
-    result.next ||
-    queueRepository
-      .list()
-      .find(
-        (ticket) =>
-          ticket.serviceId === service.id && ticket.status === "serving",
-      ) ||
-    null;
-
-  const completedTicket = withWaitEstimate(completed);
-  const nextTicket = next ? withWaitEstimate(next) : null;
-
   return res.json({
-    completed: completedTicket,
-    next: nextTicket,
-    ticket: completedTicket,
-    nextTicket: nextTicket,
+    completed: withWaitEstimate(result.completed),
+    next: result.next ? withWaitEstimate(result.next) : null,
   });
 }
 
-module.exports = {
-  list,
-  listMine,
-  listNotifications,
-  get,
-  join,
-  leave,
-  serveNext,
-};
+module.exports = { list, listMine, listNotifications, get, join, leave, serveNext };
