@@ -1,5 +1,4 @@
 const authRepository = require('./auth.repository');
-const emailService = require('./email.service');
 
 async function register(req, res, next) {
   try {
@@ -37,24 +36,15 @@ async function forgotPassword(req, res, next) {
   try {
     const token = await authRepository.createPasswordResetToken(req.body.email);
     const frontendUrl = (process.env.FRONTEND_URL || 'http://localhost:8000').replace(/\/$/, '');
-    if (token) {
-      const link = `${frontendUrl}/reset-password.html#token=${token}`;
-      if (emailService.isConfigured()) {
-        try {
-          await emailService.sendPasswordResetEmail(req.body.email, link);
-        } catch (error) {
-          console.error('Could not send password reset email:', error.message);
-        }
-      } else if ((process.env.NODE_ENV || 'development') === 'development') {
-        console.info(`Password reset link: ${link}`);
-      }
+    const isDevelopment = (process.env.NODE_ENV || 'development') === 'development';
+    if (token && isDevelopment) {
+      console.info(`Password reset link: ${frontendUrl}/reset-password.html#token=${token}`);
     }
-    const deliveryMessage = emailService.isConfigured()
-      ? 'If an account exists for that email, check its inbox for reset instructions.'
-      : (process.env.NODE_ENV || 'development') === 'development'
+    return res.json({
+      message: isDevelopment
         ? 'If an account exists for that email, a reset link is available in the backend terminal for local development.'
-        : 'If an account exists for that email, reset instructions will be made available.';
-    return res.json({ message: deliveryMessage });
+        : 'If an account exists for that email, contact the administrator for help resetting the password.',
+    });
   } catch (error) {
     return next(error);
   }
