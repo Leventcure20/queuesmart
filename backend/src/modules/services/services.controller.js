@@ -1,23 +1,36 @@
 const servicesRepository = require('./services.repository');
 const queueRepository = require('../queue/queue.repository');
 
-function list(_req, res) {
-  return res.json({ services: servicesRepository.list() });
+function respond(result, next, onSuccess) {
+  if (result && typeof result.then === 'function') return result.then(onSuccess).catch(next);
+  try {
+    return onSuccess(result);
+  } catch (error) {
+    return next(error);
+  }
 }
 
-function create(req, res) {
+function list(_req, res, next) {
+  return respond(servicesRepository.list(), next, (services) => res.json({ services }));
+}
+
+function create(req, res, next) {
   const { name, description, expectedDuration, priorityLevel } = req.body;
-  const service = servicesRepository.create({ name, description, expectedDuration, priorityLevel });
-  return res.status(201).json({ service });
+  return respond(
+    servicesRepository.create({ name, description, expectedDuration, priorityLevel }),
+    next,
+    (service) => res.status(201).json({ service })
+  );
 }
 
-function update(req, res) {
-  const service = servicesRepository.update(req.params.id, req.body);
-  if (!service) return res.status(404).json({ error: 'Service not found' });
-  return res.json({ service });
+function update(req, res, next) {
+  return respond(servicesRepository.update(req.params.id, req.body), next, (service) => {
+    if (!service) return res.status(404).json({ error: 'Service not found' });
+    return res.json({ service });
+  });
 }
 
-function remove(req, res) {
+function remove(req, res, next) {
   const service = servicesRepository.findById(req.params.id);
   if (!service) return res.status(404).json({ error: 'Service not found' });
 
@@ -28,8 +41,7 @@ function remove(req, res) {
     return res.status(409).json({ error: 'This service has active queue tickets. Clear the queue before deleting it.' });
   }
 
-  servicesRepository.remove(req.params.id);
-  return res.json({ service });
+  return respond(servicesRepository.remove(req.params.id), next, () => res.json({ service }));
 }
 
 module.exports = { list, create, update, remove };

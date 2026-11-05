@@ -19,16 +19,18 @@ createuser --pwprompt queuesmart_user
 createdb -O queuesmart_user queuesmart
 ```
 
-For a new database, run both checked-in SQL files in order. The second file creates `UserProfile`, links it to `UserCredentials` with a foreign key, and moves existing full names into it:
+For a new database, run all four checked-in SQL files in order. They create `UserCredentials`, `UserProfile`, and `Service`, then insert the three demo services:
 
 ```sh
 psql -h localhost -U queuesmart_user -d queuesmart -f ../database/001_create_user_credentials.sql
 psql -h localhost -U queuesmart_user -d queuesmart -f ../database/002_create_user_profile.sql
+psql -h localhost -U queuesmart_user -d queuesmart -f ../database/003_create_service.sql
+psql -h localhost -U queuesmart_user -d queuesmart -f ../database/004_seed_services.sql
 ```
 
-If `001_create_user_credentials.sql` has already been applied, run only the second command.
+If earlier SQL files have already been applied, run only the remaining files in order.
 
-Set `DATABASE_URL` in `backend/.env` to `postgresql://queuesmart_user:YOUR_PASSWORD@localhost:5432/queuesmart`, replacing `YOUR_PASSWORD` with the password you chose. Do not commit `.env`. The API stores credentials in `UserCredentials` and the user's full name, optional phone number, and preferences in `UserProfile`. Sessions, services, queue tickets, and notifications are still held in memory and reset when the API restarts.
+Set `DATABASE_URL` in `backend/.env` to `postgresql://queuesmart_user:YOUR_PASSWORD@localhost:5432/queuesmart`, replacing `YOUR_PASSWORD` with the password you chose. Do not commit `.env`. The API stores credentials in `UserCredentials`, profile details in `UserProfile`, and organization services in `Service`. Sessions, queue tickets, and notifications are still held in memory and reset when the API restarts.
 
 The API health endpoint is `GET /api/health`.
 
@@ -59,8 +61,8 @@ Service updates accept only `name`, `description`, `expectedDuration`, and `prio
 - `src/app.js` — Express app configuration
 - `src/server.js` — starts the HTTP server
 
-Registration and email/password login use PostgreSQL-backed accounts. Passwords are hashed with bcrypt before storage. Registration assigns the `user` role; an administrator account can be bootstrapped by setting `ADMIN_NAME`, `ADMIN_EMAIL`, and `ADMIN_PASSWORD` in `.env`. Login and registration return a Bearer token that expires after 24 hours. Use `GET /api/auth/me` with `Authorization: Bearer <token>` to read the signed-in account, and `POST /api/auth/logout` to revoke its session. Sessions remain in memory and reset when the server restarts. Service creation/updates and ticket listing require the admin role; joining a queue requires login, and users can leave only their own active ticket (waiting or serving). Google login remains a placeholder.
+Registration and email/password login use PostgreSQL-backed accounts. Passwords are hashed with bcrypt before storage. Registration assigns the `user` role; an administrator account can be bootstrapped by setting `ADMIN_NAME`, `ADMIN_EMAIL`, and `ADMIN_PASSWORD` in `.env`. Login and registration return a Bearer token that expires after 24 hours. Use `GET /api/auth/me` with `Authorization: Bearer <token>` to read the signed-in account, and `POST /api/auth/logout` to revoke its session. Sessions remain in memory and reset when the server restarts. Only administrators can create, update, or delete services and list all tickets; joining a queue requires login, and users can leave only their own active ticket (waiting or serving). Google login remains a placeholder.
 
 Service endpoints are `GET /api/services`, `POST /api/services`, and `PUT /api/services/:id`. Queue endpoints are `GET /api/queue/tickets`, `GET /api/queue/my-tickets`, `GET /api/queue/notifications`, `POST /api/queue/tickets`, and `DELETE /api/queue/tickets/:ticketId`. To join, send `serviceId`; the account name is used for the ticket. Queue tickets advance automatically according to each service’s expected duration: the current ticket becomes `served` and the next ticket becomes `serving`. Responses include the current position and a continuously decreasing wait estimate in seconds and minutes. Joining creates a notification, a one-time “almost up” notification is created when the estimated wait reaches five minutes or less, and the user gets a “It’s your turn” notification when service starts. The frontend checks for notifications and refreshes displayed wait estimates every five seconds. Authenticated users retrieve their notification list from `GET /api/queue/notifications`; notifications and queue tickets are held in memory and reset when the server restarts. Leaving marks an active ticket as cancelled and moves the next ticket forward. Service records and queue tickets are held in memory and reset when the server restarts.
 
-The in-memory service repository starts with three demo services (General Inquiry, Billing & Payments, and Technical Support), so the user join form is populated immediately. Admin changes and newly created services are available until the backend restarts. Expected service duration is expressed in minutes; service priority levels are `low`, `medium`, or `high`.
+The service table starts with three demo services (General Inquiry, Billing & Payments, and Technical Support), so the user join form is populated immediately. Only administrators can create, update, or delete services. Expected service duration is expressed in minutes; service priority levels are `low`, `medium`, or `high`.
