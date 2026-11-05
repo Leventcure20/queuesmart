@@ -17,7 +17,7 @@
     message.textContent = '';
     try {
       const result = await window.QueueSmartApi.requestPasswordReset(form.elements.email.value.trim());
-      message.textContent = `${result.message} For this local demo, check the backend terminal for the link.`;
+      message.textContent = result.message;
     } catch (error) {
       message.textContent = error.message;
     } finally {
