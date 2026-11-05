@@ -1,0 +1,6 @@
+CREATE TABLE IF NOT EXISTS "PasswordResetTokens" (
+  user_id UUID PRIMARY KEY REFERENCES "UserCredentials" (id) ON DELETE CASCADE,
+  token_hash CHAR(64) NOT NULL UNIQUE,
+  expires_at TIMESTAMPTZ NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);

@@ -1,4 +1,4 @@
-const { randomUUID, randomBytes } = require('crypto');
+const { randomUUID, randomBytes, createHash } = require('crypto');
 const { hashPassword, verifyPassword } = require('./password');
 const { ROLES } = require('./roles');
 const { pool } = require('../../config/database');
@@ -98,6 +98,72 @@ function revokeSession(token) {
   return sessions.delete(token);
 }
 
+function revokeSessionsForUser(userId) {
+  for (const [token, session] of sessions) {
+    if (session.user.id === userId) sessions.delete(token);
+  }
+}
+
+async function createPasswordResetToken(email) {
+  if (!pool) return null;
+  const normalizedEmail = normalizeEmail(email);
+  const account = await pool.query(
+    'SELECT id FROM "UserCredentials" WHERE email = $1',
+    [normalizedEmail]
+  );
+  if (!account.rows[0]) return null;
+
+  const token = randomBytes(32).toString('hex');
+  const tokenHash = createHash('sha256').update(token).digest('hex');
+  await pool.query(
+    `INSERT INTO "PasswordResetTokens" (user_id, token_hash, expires_at)
+     VALUES ($1, $2, NOW() + INTERVAL '15 minutes')
+     ON CONFLICT (user_id) DO UPDATE
+     SET token_hash = EXCLUDED.token_hash,
+         expires_at = EXCLUDED.expires_at,
+         created_at = NOW()`,
+    [account.rows[0].id, tokenHash]
+  );
+  return token;
+}
+
+async function resetPassword(token, password) {
+  if (!pool) return false;
+  const tokenHash = createHash('sha256').update(token).digest('hex');
+  const client = await pool.connect();
+  let userId;
+
+  try {
+    await client.query('BEGIN');
+    const result = await client.query(
+      `SELECT user_id FROM "PasswordResetTokens"
+       WHERE token_hash = $1 AND expires_at > NOW()
+       FOR UPDATE`,
+      [tokenHash]
+    );
+    if (!result.rows[0]) {
+      await client.query('ROLLBACK');
+      return false;
+    }
+    userId = result.rows[0].user_id;
+    const passwordHash = await hashPassword(password);
+    await client.query(
+      'UPDATE "UserCredentials" SET password_hash = $1, updated_at = NOW() WHERE id = $2',
+      [passwordHash, userId]
+    );
+    await client.query('DELETE FROM "PasswordResetTokens" WHERE user_id = $1', [userId]);
+    await client.query('COMMIT');
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
+
+  revokeSessionsForUser(userId);
+  return true;
+}
+
 function findUserByToken(token) {
   const session = sessions.get(token);
   if (!session) return null;
@@ -128,4 +194,13 @@ async function initializeAdmin({ name, email, password }) {
   console.info(`Administrator account configured for ${normalizedEmail}`);
 }
 
-module.exports = { createUser, authenticate, createSession, revokeSession, findUserByToken, initializeAdmin };
+module.exports = {
+  createUser,
+  authenticate,
+  createSession,
+  revokeSession,
+  findUserByToken,
+  initializeAdmin,
+  createPasswordResetToken,
+  resetPassword,
+};

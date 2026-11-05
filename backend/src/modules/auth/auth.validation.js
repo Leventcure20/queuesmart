@@ -40,4 +40,16 @@ const loginRules = [
   passwordByteLimitRule(),
 ];
 
-module.exports = { registerRules, loginRules };
+const forgotPasswordRules = [emailRule()];
+
+const resetPasswordRules = [
+  body('token')
+    .isString().withMessage('Reset token is required').bail()
+    .matches(/^[a-f0-9]{64}$/i).withMessage('Reset token is invalid'),
+  body('password')
+    .isString().withMessage('Password must be a string').bail()
+    .isLength({ min: 8 }).withMessage('Password must be at least 8 characters'),
+  passwordByteLimitRule(),
+];
+
+module.exports = { registerRules, loginRules, forgotPasswordRules, resetPasswordRules };

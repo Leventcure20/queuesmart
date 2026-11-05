@@ -75,6 +75,18 @@ window.QueueSmartApi = {
       body: JSON.stringify({ email, password }),
     });
   },
+  async requestPasswordReset(email) {
+    return apiRequest('/auth/forgot-password', {
+      method: 'POST',
+      body: JSON.stringify({ email }),
+    });
+  },
+  async resetPassword({ token, password }) {
+    return apiRequest('/auth/reset-password', {
+      method: 'POST',
+      body: JSON.stringify({ token, password }),
+    });
+  },
   async getCurrentUser() {
     const result = await apiRequest("/auth/me");
     return result.user;
