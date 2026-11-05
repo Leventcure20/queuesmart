@@ -3,7 +3,8 @@ const { hashPassword, verifyPassword } = require('./password');
 const { ROLES } = require('./roles');
 const { pool } = require('../../config/database');
 
-// Temporary account and session storage. Both reset when the server restarts.
+// In-memory account storage is used only when tests run without DATABASE_URL.
+// Production accounts live in PostgreSQL; bearer sessions remain in memory.
 const users = new Map();
 const usersByEmail = new Map();
 const sessions = new Map();
@@ -17,20 +18,42 @@ function normalizeEmail(email) {
   return typeof email === 'string' ? email.trim().toLowerCase() : '';
 }
 
+async function createDatabaseUser({ name, email, password, role }) {
+  const id = randomUUID();
+  const normalizedEmail = normalizeEmail(email);
+  const passwordHash = await hashPassword(password);
+  const client = await pool.connect();
+
+  try {
+    await client.query('BEGIN');
+    const result = await client.query(
+      `INSERT INTO "UserCredentials" (id, email, password_hash, role)
+       VALUES ($1, $2, $3, $4)
+       ON CONFLICT (email) DO NOTHING
+       RETURNING id, email, role`,
+      [id, normalizedEmail, passwordHash, role]
+    );
+    if (!result.rows[0]) {
+      await client.query('ROLLBACK');
+      return null;
+    }
+    await client.query(
+      'INSERT INTO "UserProfile" (user_id, full_name) VALUES ($1, $2)',
+      [id, name]
+    );
+    await client.query('COMMIT');
+    return { id, name, email: normalizedEmail, role };
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
 async function createUser({ name, email, password }) {
   const normalizedEmail = normalizeEmail(email);
-  if (pool) {
-    const id = randomUUID();
-    const passwordHash = await hashPassword(password);
-    const result = await pool.query(
-      `INSERT INTO "UserCredentials" (id, name, email, password_hash, role)
-       VALUES ($1, $2, $3, $4, $5)
-       ON CONFLICT (email) DO NOTHING
-       RETURNING id, name, email, role`,
-      [id, name, normalizedEmail, passwordHash, ROLES.USER]
-    );
-    return result.rows[0] || null;
-  }
+  if (pool) return createDatabaseUser({ name, email: normalizedEmail, password, role: ROLES.USER });
   if (usersByEmail.has(normalizedEmail)) return null;
   const passwordHash = await hashPassword(password);
   // Recheck after hashing so concurrent registrations cannot create duplicates.
@@ -47,7 +70,11 @@ async function createUser({ name, email, password }) {
 async function authenticate(email, password) {
   if (pool) {
     const result = await pool.query(
-      'SELECT id, name, email, password_hash, role FROM "UserCredentials" WHERE email = $1',
+      `SELECT credentials.id, profile.full_name AS name, credentials.email,
+              credentials.password_hash, credentials.role
+       FROM "UserCredentials" AS credentials
+       JOIN "UserProfile" AS profile ON profile.user_id = credentials.id
+       WHERE credentials.email = $1`,
       [normalizeEmail(email)]
     );
     const user = result.rows[0];
@@ -87,16 +114,8 @@ async function initializeAdmin({ name, email, password }) {
   const normalizedEmail = normalizeEmail(email);
   if (pool) {
     if (!name || !normalizedEmail || !password) return;
-    const id = randomUUID();
-    const passwordHash = await hashPassword(password);
-    const result = await pool.query(
-      `INSERT INTO "UserCredentials" (id, name, email, password_hash, role)
-       VALUES ($1, $2, $3, $4, $5)
-       ON CONFLICT (email) DO NOTHING
-       RETURNING email`,
-      [id, name, normalizedEmail, passwordHash, ROLES.ADMIN]
-    );
-    if (result.rowCount) console.info(`Administrator account configured for ${normalizedEmail}`);
+    const admin = await createDatabaseUser({ name, email: normalizedEmail, password, role: ROLES.ADMIN });
+    if (admin) console.info(`Administrator account configured for ${normalizedEmail}`);
     return;
   }
   if (!name || !normalizedEmail || !password || usersByEmail.has(normalizedEmail)) return;

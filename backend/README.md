@@ -19,13 +19,16 @@ createuser --pwprompt queuesmart_user
 createdb -O queuesmart_user queuesmart
 ```
 
-Run the checked-in SQL setup file to create the `UserCredentials` table:
+For a new database, run both checked-in SQL files in order. The second file creates `UserProfile`, links it to `UserCredentials` with a foreign key, and moves existing full names into it:
 
 ```sh
 psql -h localhost -U queuesmart_user -d queuesmart -f ../database/001_create_user_credentials.sql
+psql -h localhost -U queuesmart_user -d queuesmart -f ../database/002_create_user_profile.sql
 ```
 
-Set `DATABASE_URL` in `backend/.env` to `postgresql://queuesmart_user:YOUR_PASSWORD@localhost:5432/queuesmart`, replacing `YOUR_PASSWORD` with the password you chose. Do not commit `.env`. The API stores newly registered accounts and bootstrapped administrator accounts in PostgreSQL. Sessions, services, queue tickets, and notifications are still held in memory and reset when the API restarts.
+If `001_create_user_credentials.sql` has already been applied, run only the second command.
+
+Set `DATABASE_URL` in `backend/.env` to `postgresql://queuesmart_user:YOUR_PASSWORD@localhost:5432/queuesmart`, replacing `YOUR_PASSWORD` with the password you chose. Do not commit `.env`. The API stores credentials in `UserCredentials` and the user's full name, optional phone number, and preferences in `UserProfile`. Sessions, services, queue tickets, and notifications are still held in memory and reset when the API restarts.
 
 The API health endpoint is `GET /api/health`.
 
