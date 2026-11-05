@@ -6,4 +6,5 @@ module.exports = {
   adminName: process.env.ADMIN_NAME,
   adminEmail: process.env.ADMIN_EMAIL,
   adminPassword: process.env.ADMIN_PASSWORD,
+  databaseUrl: process.env.DATABASE_URL,
 };
