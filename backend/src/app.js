@@ -3,6 +3,7 @@ const authRoutes = require('./modules/auth/auth.routes');
 const serviceRoutes = require('./modules/services/services.routes');
 const queueRoutes = require('./modules/queue/queue.routes');
 const errorHandler = require('./middleware/error-handler');
+const authenticate = require('./modules/auth/auth.middleware');
 
 const app = express();
 
@@ -24,6 +25,20 @@ app.use((req, res, next) => {
 });
 
 app.use(express.json());
+
+const publicAuthRequests = new Set([
+  'POST /auth/register',
+  'POST /auth/login',
+  'POST /auth/google',
+  'POST /auth/forgot-password',
+  'POST /auth/reset-password',
+]);
+
+app.use('/api', (req, res, next) => {
+  if (publicAuthRequests.has(`${req.method} ${req.path}`)) return next();
+  return authenticate(req, res, next);
+});
+
 app.use('/api/auth', authRoutes);
 app.use('/api/services', serviceRoutes);
 app.use('/api/queue', queueRoutes);

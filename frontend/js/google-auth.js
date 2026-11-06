@@ -22,6 +22,8 @@
     window.google.accounts.id.initialize({
       client_id: clientId,
       callback: async ({ credential }) => {
+        const message = document.querySelector('#auth-form .form-message');
+        if (message) message.textContent = '';
         try {
           const response = await fetch(
             config.googleAuthEndpoint || "/api/auth/google",
@@ -32,10 +34,17 @@
               body: JSON.stringify({ credential }),
             },
           );
-          if (!response.ok) throw new Error("Google sign-in request failed.");
-          location.href = "dashboard.html";
+          const session = await response.json();
+          if (!response.ok) throw new Error(session.error || "Google sign-in failed.");
+          localStorage.setItem('QueueSmartAuth', JSON.stringify(session));
+          const requestedPage = new URLSearchParams(location.search).get('returnTo');
+          const safePage = /^(dashboard|admin-dashboard|service-management|queue-management|history|join-queue|queue-status)\.html(?:\?role=admin)?$/.test(requestedPage || '');
+          location.href = safePage
+            ? requestedPage
+            : session.user.role === 'admin' ? 'admin-dashboard.html' : 'dashboard.html';
         } catch (error) {
           console.error("Google sign-in failed:", error);
+          if (message) message.textContent = error.message;
         }
       },
     });
@@ -44,7 +53,9 @@
       theme: "outline",
       size: "large",
       shape: "rectangular",
-      text: "continue_with",
+      text: location.pathname.endsWith("/register.html")
+        ? "signup_with"
+        : "signin_with",
       width: Math.min(350, mount.clientWidth || 350),
     });
     fallback?.remove();

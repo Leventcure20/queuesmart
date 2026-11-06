@@ -1,7 +1,38 @@
 (async () => {
   const path = location.pathname.split("/").pop() || "index.html";
   const data = window.QueueSmartData;
-  const isPublic = ["index.html", "login.html", "register.html"].includes(path);
+  const calculateDailyStats = (tickets) => {
+    const today = new Date().toDateString();
+    const completedToday = tickets.filter(
+      (ticket) =>
+        ticket.status === "Completed" &&
+        ticket.servedAt &&
+        new Date(ticket.servedAt).toDateString() === today,
+    );
+    const completedWaits = completedToday
+      .map((ticket) => {
+        const joinedAt = Date.parse(ticket.joinedAt);
+        const serviceStartedAt = Date.parse(ticket.serviceStartedAt);
+        return Number.isFinite(joinedAt) &&
+          Number.isFinite(serviceStartedAt) &&
+          serviceStartedAt >= joinedAt
+          ? (serviceStartedAt - joinedAt) / 60_000
+          : null;
+      })
+      .filter((wait) => wait !== null);
+
+    return {
+      servedToday: completedToday.length,
+      averageWait: completedWaits.length
+        ? Math.round(
+            (completedWaits.reduce((total, wait) => total + wait, 0) /
+              completedWaits.length) *
+              10,
+          ) / 10
+        : null,
+    };
+  };
+  const isPublic = ["login.html", "register.html"].includes(path);
   const adminOnlyPage =
     [
       "admin-dashboard.html",
@@ -52,20 +83,7 @@
         window.QueueSmartApi.getServices(),
         window.QueueSmartApi.getTickets(),
       ]);
-      data.stats = {
-        servedToday: data.tickets.filter((t) => t.status === "Completed")
-          .length,
-        averageWait: data.tickets.filter((t) => t.estimatedWaitMinutes != null)
-          .length
-          ? Math.round(
-              data.tickets
-                .filter((t) => t.estimatedWaitMinutes != null)
-                .reduce((sum, t) => sum + t.estimatedWaitMinutes, 0) /
-                data.tickets.filter((t) => t.estimatedWaitMinutes != null)
-                  .length,
-            )
-          : 0,
-      };
+      data.stats = calculateDailyStats(data.tickets);
     } catch (error) {
       const shell = document.querySelector("[data-app-shell]");
       if (shell)
@@ -272,7 +290,7 @@
         "",
       )}${manage ? "" : '<a class="add-service" href="join-queue.html"><span>＋</span><strong>Choose a service</strong><small>See all available queues</small></a>'}</div>`;
   const adminUsageStats = () =>
-    `<section class="admin-usage-block" aria-labelledby="usage-heading"><h2 id="usage-heading">Today at a glance</h2><div class="admin-usage-stats" aria-label="Usage statistics"><article class="admin-stat-card"><span class="admin-stat-icon purple">↗</span><div><small>Completed tickets</small><strong>${data.stats.servedToday}</strong></div></article><article class="admin-stat-card"><span class="admin-stat-icon blue">◷</span><div><small>Average wait time</small><strong>${data.stats.averageWait} <span>min</span></strong></div></article><article class="admin-stat-card"><span class="admin-stat-icon green">◇</span><div><small>Open services</small><strong>${data.services.filter((service) => service.status === "Open").length} <span>of ${data.services.length}</span></strong></div></article></div></section>`;
+    `<section class="admin-usage-block" aria-labelledby="usage-heading"><h2 id="usage-heading">Today at a glance</h2><div class="admin-usage-stats" aria-label="Usage statistics"><article class="admin-stat-card"><span class="admin-stat-icon purple">↗</span><div><small>Completed tickets</small><strong>${data.stats.servedToday}</strong></div></article><article class="admin-stat-card"><span class="admin-stat-icon blue">◷</span><div><small>Average wait time</small><strong>${data.stats.averageWait === null ? "—" : `${data.stats.averageWait} <span>min</span>`}</strong></div></article><article class="admin-stat-card"><span class="admin-stat-icon green">◇</span><div><small>Open services</small><strong>${data.services.filter((service) => service.status === "Open").length} <span>of ${data.services.length}</span></strong></div></article></div></section>`;
   const renderLiveAdminView = () => {
     const search = document.querySelector("#ticket-search")?.value || "";
     const selectedService =
@@ -432,25 +450,7 @@
         ]);
         data.tickets = tickets;
         data.services = services;
-        data.stats = {
-          servedToday: tickets.filter((ticket) => ticket.status === "Completed")
-            .length,
-          averageWait: tickets.filter(
-            (ticket) => ticket.estimatedWaitMinutes != null,
-          ).length
-            ? Math.round(
-                tickets
-                  .filter((ticket) => ticket.estimatedWaitMinutes != null)
-                  .reduce(
-                    (sum, ticket) => sum + ticket.estimatedWaitMinutes,
-                    0,
-                  ) /
-                  tickets.filter(
-                    (ticket) => ticket.estimatedWaitMinutes != null,
-                  ).length,
-              )
-            : 0,
-        };
+        data.stats = calculateDailyStats(tickets);
         if (admin) renderLiveAdminView();
         renderNotifications(notifications);
         tickets.forEach((ticket) => {

@@ -52,15 +52,16 @@ async function session(kind = 'user') {
 }
 
 test('health and CORS support the local frontend and authorized preflight methods', async () => {
-  const health = await request('GET', '/api/health', { headers: { Origin: 'http://localhost:8000' } });
+  const { token } = await session();
+  const health = await request('GET', '/api/health', { token, headers: { Origin: 'http://localhost:8000' } });
   assert.equal(health.status, 200);
   assert.deepEqual(health.body, { status: 'ok' });
   assert.equal(health.headers.get('access-control-allow-origin'), 'http://localhost:8000');
   assert.equal(health.headers.get('vary'), 'Origin');
 
-  const alternate = await request('GET', '/api/health', { headers: { Origin: 'http://127.0.0.1:8000' } });
+  const alternate = await request('GET', '/api/health', { token, headers: { Origin: 'http://127.0.0.1:8000' } });
   assert.equal(alternate.headers.get('access-control-allow-origin'), 'http://127.0.0.1:8000');
-  const unrelated = await request('GET', '/api/health', { headers: { Origin: 'https://unrelated.example' } });
+  const unrelated = await request('GET', '/api/health', { token, headers: { Origin: 'https://unrelated.example' } });
   assert.equal(unrelated.headers.get('access-control-allow-origin'), null);
 
   const preflight = await request('OPTIONS', '/api/services', { headers: { Origin: 'http://localhost:8000' } });
@@ -109,19 +110,22 @@ test('registration rejects invalid requests with safe validation details', async
 test('all protected routes reject missing authentication', async () => {
   for (const [method, route] of [
     ['GET', '/api/auth/me'], ['POST', '/api/auth/logout'],
+    ['GET', '/api/services'], ['GET', '/api/health'],
     ['POST', '/api/services'], ['PUT', '/api/services/S-01'], ['DELETE', '/api/services/S-01'],
     ['GET', '/api/queue/tickets'], ['GET', '/api/queue/my-tickets'], ['GET', '/api/queue/notifications'],
-    ['POST', '/api/queue/tickets'], ['GET', '/api/queue/tickets/missing'], ['DELETE', '/api/queue/tickets/missing'],
+    ['POST', '/api/queue/tickets'], ['POST', '/api/queue/serve-next'],
+    ['GET', '/api/queue/tickets/missing'], ['DELETE', '/api/queue/tickets/missing'],
   ]) {
     assert.equal((await request(method, route)).status, 401, `${method} ${route}`);
   }
 });
 
-test('public service listing works and customers cannot use administrator routes', async () => {
-  const list = await request('GET', '/api/services');
+test('service listing requires login and customers cannot use administrator routes', async () => {
+  assert.equal((await request('GET', '/api/services')).status, 401);
+  const { token } = await session();
+  const list = await request('GET', '/api/services', { token });
   assert.equal(list.status, 200);
   assert.equal(list.body.services.length, 3);
-  const { token } = await session();
   for (const [method, route] of [
     ['POST', '/api/services'], ['PUT', '/api/services/S-01'],
     ['DELETE', '/api/services/S-01'], ['GET', '/api/queue/tickets'],
@@ -149,12 +153,12 @@ test('administrators can create, validate, partially update, and delete services
 
 test('service updates reject unsupported fields and preserve the record identity', async () => {
   const { token } = await session('admin');
-  const before = (await request('GET', '/api/services')).body.services.find((s) => s.id === 'S-01');
+  const before = (await request('GET', '/api/services', { token })).body.services.find((s) => s.id === 'S-01');
   for (const body of [
     { unexpected: true },
     { name: 'Tampered', id: 'replacement', createdAt: '2000-01-01T00:00:00.000Z' },
   ]) assert.equal((await request('PUT', '/api/services/S-01', { token, body })).status, 400);
-  const after = (await request('GET', '/api/services')).body.services.find((s) => s.id === 'S-01');
+  const after = (await request('GET', '/api/services', { token })).body.services.find((s) => s.id === 'S-01');
   assert.deepEqual(after, before);
 });
 
@@ -232,8 +236,41 @@ test('administrator removal starts the next ticket at removal time and blocks se
   assert.equal(next.body.ticket.serviceStartedAt, new Date(now + 3 * 60_000).toISOString());
 });
 
-test('Google sign-in reports its current unimplemented status', async () => {
+test('Google sign-in rejects a missing credential and reports missing configuration', async () => {
   const result = await request('POST', '/api/auth/google', { body: {} });
-  assert.equal(result.status, 501);
-  assert.match(result.body.error, /not implemented/);
+  assert.equal(result.status, 400);
+  assert.match(result.body.error, /credential is required/);
+  const previousClientId = process.env.GOOGLE_CLIENT_ID;
+  delete process.env.GOOGLE_CLIENT_ID;
+  try {
+    const unconfigured = await request('POST', '/api/auth/google', { body: { credential: 'token' } });
+    assert.equal(unconfigured.status, 503);
+  } finally {
+    if (previousClientId === undefined) delete process.env.GOOGLE_CLIENT_ID;
+    else process.env.GOOGLE_CLIENT_ID = previousClientId;
+  }
+});
+
+test('Google sign-in verifies the ID token and creates a normal QueueSmart session', async (t) => {
+  const { OAuth2Client } = require('google-auth-library');
+  const previousClientId = process.env.GOOGLE_CLIENT_ID;
+  process.env.GOOGLE_CLIENT_ID = 'test-google-client-id';
+  t.mock.method(OAuth2Client.prototype, 'verifyIdToken', async ({ idToken, audience }) => {
+    assert.equal(idToken, 'valid-google-id-token');
+    assert.equal(audience, 'test-google-client-id');
+    return { getPayload: () => ({ email: 'GOOGLE@example.com', email_verified: true, name: 'Google User' }) };
+  });
+  try {
+    const result = await request('POST', '/api/auth/google', { body: { credential: 'valid-google-id-token' } });
+    assert.equal(result.status, 200);
+    assert.equal(result.body.user.email, 'google@example.com');
+    assert.equal(result.body.user.role, 'user');
+    assert.equal(result.body.tokenType, 'Bearer');
+    assert.ok(result.body.token);
+    const current = await request('GET', '/api/auth/me', { token: result.body.token });
+    assert.equal(current.body.user.id, result.body.user.id);
+  } finally {
+    if (previousClientId === undefined) delete process.env.GOOGLE_CLIENT_ID;
+    else process.env.GOOGLE_CLIENT_ID = previousClientId;
+  }
 });

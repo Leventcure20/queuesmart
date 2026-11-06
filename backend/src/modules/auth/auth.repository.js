@@ -67,6 +67,47 @@ async function createUser({ name, email, password }) {
   return publicUser(user);
 }
 
+async function findOrCreateGoogleUser({ name, email }) {
+  const normalizedEmail = normalizeEmail(email);
+  if (pool) {
+    const existing = await pool.query(
+      `SELECT credentials.id, profile.full_name AS name, credentials.email, credentials.role
+       FROM "UserCredentials" AS credentials
+       JOIN "UserProfile" AS profile ON profile.user_id = credentials.id
+       WHERE credentials.email = $1`,
+      [normalizedEmail]
+    );
+    if (existing.rows[0]) return publicUser(existing.rows[0]);
+  } else {
+    const existingId = usersByEmail.get(normalizedEmail);
+    if (existingId) return publicUser(users.get(existingId));
+  }
+
+  // Google-only accounts receive an unguessable local password hash.
+  const created = await createUser({
+    name: String(name || normalizedEmail.split('@')[0]).trim().slice(0, 100),
+    email: normalizedEmail,
+    password: randomBytes(48).toString('base64url'),
+  });
+  if (created) return created;
+
+  // Another sign-in may have created the same email concurrently.
+  if (pool) {
+    const existing = await pool.query(
+      `SELECT credentials.id, profile.full_name AS name, credentials.email, credentials.role
+       FROM "UserCredentials" AS credentials
+       JOIN "UserProfile" AS profile ON profile.user_id = credentials.id
+       WHERE credentials.email = $1`,
+      [normalizedEmail]
+    );
+    if (existing.rows[0]) return publicUser(existing.rows[0]);
+  } else {
+    const existingId = usersByEmail.get(normalizedEmail);
+    if (existingId) return publicUser(users.get(existingId));
+  }
+  throw new Error('Could not create or find the Google account');
+}
+
 async function authenticate(email, password) {
   if (pool) {
     const result = await pool.query(
@@ -201,6 +242,7 @@ async function initializeAdmin({ name, email, password }) {
 
 module.exports = {
   createUser,
+  findOrCreateGoogleUser,
   authenticate,
   createSession,
   revokeSession,
