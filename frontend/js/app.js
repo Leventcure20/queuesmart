@@ -280,11 +280,18 @@
   const serviceList = (manage = false, allowActions = manage) =>
     `<div class="service-grid">${data.services
       .map((s, i) => {
+        const queueIsOpen = s.status !== "Closed";
         const waiting = data.tickets.filter(
           (t) =>
             t.service === s.name && ["Waiting", "Serving"].includes(t.status),
         ).length;
-        return `<article class="service-card"><div class="service-card-top"><span class="service-symbol symbol-${i % 3}">${["◈", "＄", "⌘"][i % 3]}</span>${badge("Open")}</div><h3>${s.name}</h3><p>${s.description}</p>${manage ? `<p class="service-priority">Priority: <strong>${(s.priority || "medium").charAt(0).toUpperCase() + (s.priority || "medium").slice(1)}</strong></p>` : ""}<div class="service-metrics"><span><strong>${s.duration} min</strong><small>Expected duration</small></span><span><strong>${waiting} people</strong><small>In this queue</small></span></div>${allowActions ? `<div class="card-actions"><button class="button button-secondary" data-action="edit-service" data-index="${i}">Edit</button><button class="button button-secondary" data-action="delete-service" data-service-id="${s.id}">Delete</button></div>` : manage ? "" : `<a class="button button-primary full-width" href="join-queue.html?service=${encodeURIComponent(s.id)}">Join queue →</a>`}</article>`;
+        const adminActions = manage
+          ? `<div class="card-actions"><button class="button button-secondary" data-action="toggle-queue" data-queue-id="${s.queueId}">${queueIsOpen ? "Close queue" : "Open queue"}</button>${allowActions ? `<button class="button button-secondary" data-action="edit-service" data-index="${i}">Edit</button><button class="button button-secondary" data-action="delete-service" data-service-id="${s.id}">Delete</button>` : ""}</div>`
+          : "";
+        const customerAction = queueIsOpen
+          ? `<a class="button button-primary full-width" href="join-queue.html?service=${encodeURIComponent(s.id)}">Join queue →</a>`
+          : '<button class="button button-secondary full-width" disabled>Queue closed</button>';
+        return `<article class="service-card"><div class="service-card-top"><span class="service-symbol symbol-${i % 3}">${["◈", "＄", "⌘"][i % 3]}</span>${badge(s.status || "Open")}</div><h3>${s.name}</h3><p>${s.description}</p>${manage ? `<p class="service-priority">Priority: <strong>${(s.priority || "medium").charAt(0).toUpperCase() + (s.priority || "medium").slice(1)}</strong></p>` : ""}<div class="service-metrics"><span><strong>${s.duration} min</strong><small>Expected duration</small></span><span><strong>${waiting} people</strong><small>In this queue</small></span></div>${manage ? adminActions : customerAction}</article>`;
       })
       .join(
         "",
@@ -321,7 +328,7 @@
     markup = `<div class="form-card"><p>Joining as ${displayName}. Choose a service to save your place.</p><form id="join-form" novalidate><label>Service<select name="service" required><option value="">Select a service</option>${data.services
       .map(
         (s) =>
-          `<option value="${s.id}">${s.name} · about ${s.duration} min per person</option>`,
+          `<option value="${s.id}"${s.status === "Closed" ? " disabled" : ""}>${s.name}${s.status === "Closed" ? " · closed" : ` · about ${s.duration} min per person`}</option>`,
       )
       .join(
         "",
@@ -576,6 +583,28 @@
       return;
     }
 
+    if (action === "toggle-queue") {
+      const service = data.services.find(
+        (item) => item.queueId === target.dataset.queueId,
+      );
+      if (!service) {
+        toast("Could not find that service queue.");
+        return;
+      }
+      target.disabled = true;
+      try {
+        await window.QueueSmartApi.updateQueueStatus(
+          service.queueId,
+          service.status === "Open" ? "closed" : "open",
+        );
+        location.reload();
+      } catch (error) {
+        toast(error.message);
+        target.disabled = false;
+      }
+      return;
+    }
+
     if (action === "remove") {
       try {
         await window.QueueSmartApi.leaveQueue(target.dataset.ticketId);
@@ -660,9 +689,11 @@
           ticket.service === s?.name &&
           ["Waiting", "Serving"].includes(ticket.status),
       ).length;
-      document.querySelector("#wait-preview").textContent = s
-        ? `Estimated wait: about ${peopleAhead * s.duration} minutes.`
-        : "Select a service to see the estimated wait.";
+      document.querySelector("#wait-preview").textContent = !s
+        ? "Select a service to see the estimated wait."
+        : s.status === "Closed"
+          ? "This queue is closed and is not accepting new tickets."
+          : `Estimated wait: about ${peopleAhead * s.duration} minutes.`;
     }
   });
   document

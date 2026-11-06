@@ -2,6 +2,7 @@ const { randomUUID } = require("crypto");
 const { pool } = require("../../config/database");
 
 const tickets = new Map();
+const queues = new Map();
 let nextTicketNumber = 1;
 
 function iso(value) {
@@ -28,16 +29,106 @@ function fromRow(row) {
   };
 }
 
+function queueFromRow(row) {
+  return {
+    id: row.id,
+    serviceId: row.service_id,
+    status: row.status,
+    createdAt: iso(row.created_at),
+  };
+}
+
 async function initialize() {
   if (!pool) return;
-  const result = await pool.query(
-    `SELECT id, number, customer_name, user_id, service_id, service_name,
-            status, joined_at, scheduled_start_at, service_started_at,
-            served_at, cancellation_reason, left_at, created_at, updated_at
-     FROM "QueueTickets" ORDER BY joined_at, id`
-  );
+  const [ticketResult, queueResult] = await Promise.all([
+    pool.query(
+      `SELECT id, number, customer_name, user_id, service_id, service_name,
+              status, joined_at, scheduled_start_at, service_started_at,
+              served_at, cancellation_reason, left_at, created_at, updated_at
+       FROM "QueueTickets" ORDER BY joined_at, id`
+    ),
+    pool.query(
+      'SELECT id, service_id, status, created_at FROM "Queue" ORDER BY created_at, id'
+    ),
+  ]);
+  queues.clear();
+  for (const row of queueResult.rows) {
+    const queue = queueFromRow(row);
+    queues.set(queue.id, queue);
+  }
   tickets.clear();
-  for (const row of result.rows) tickets.set(row.id, fromRow(row));
+  for (const row of ticketResult.rows) tickets.set(row.id, fromRow(row));
+}
+
+function listQueues() {
+  return Array.from(queues.values());
+}
+
+function findQueueById(id) {
+  return queues.get(id) || null;
+}
+
+function findQueueByServiceId(serviceId) {
+  return listQueues().find((queue) => queue.serviceId === serviceId) || null;
+}
+
+function queueStatusForService(serviceId) {
+  const queue = findQueueByServiceId(serviceId);
+  return queue?.status || (!pool ? "open" : null);
+}
+
+function ensureQueueForService(service) {
+  const existing = findQueueByServiceId(service.id);
+  if (existing) return existing;
+  if (!pool) {
+    const queue = {
+      id: randomUUID(),
+      serviceId: service.id,
+      status: "open",
+      createdAt: new Date().toISOString(),
+    };
+    queues.set(queue.id, queue);
+    return queue;
+  }
+
+  return pool.query(
+    `INSERT INTO "Queue" (id, service_id, status)
+     VALUES ($1, $2, 'open')
+     ON CONFLICT (service_id) DO UPDATE SET service_id = EXCLUDED.service_id
+     RETURNING id, service_id, status, created_at`,
+    [randomUUID(), service.id]
+  ).then((result) => {
+    const queue = queueFromRow(result.rows[0]);
+    queues.set(queue.id, queue);
+    return queue;
+  });
+}
+
+function updateQueueStatus(id, status) {
+  if (!pool) {
+    const queue = queues.get(id);
+    if (!queue) return null;
+    const updated = { ...queue, status };
+    queues.set(id, updated);
+    return updated;
+  }
+
+  return pool.query(
+    `UPDATE "Queue" SET status = $2
+     WHERE id = $1
+     RETURNING id, service_id, status, created_at`,
+    [id, status]
+  ).then((result) => {
+    if (!result.rows[0]) return null;
+    const updated = queueFromRow(result.rows[0]);
+    queues.set(updated.id, updated);
+    return updated;
+  });
+}
+
+function removeQueueForService(serviceId) {
+  const queue = findQueueByServiceId(serviceId);
+  if (queue) queues.delete(queue.id);
 }
 
 function list() {
@@ -245,6 +336,13 @@ function serveNext(serviceID, expectedDurationMinutes, now = Date.now()) {
 
 module.exports = {
   initialize,
+  listQueues,
+  findQueueById,
+  findQueueByServiceId,
+  queueStatusForService,
+  ensureQueueForService,
+  updateQueueStatus,
+  removeQueueForService,
   list,
   findById,
   getPosition,

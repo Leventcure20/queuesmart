@@ -115,6 +115,19 @@ function list(_req, res, next) {
   );
 }
 
+function listQueues(_req, res) {
+  return res.json({ queues: queueRepository.listQueues() });
+}
+
+function updateQueueStatus(req, res, next) {
+  return safely(next, () => thenMaybe(
+    queueRepository.updateQueueStatus(req.params.queueId, req.body.status),
+    (queue) => queue
+      ? res.json({ queue })
+      : res.status(404).json({ error: 'Queue not found' })
+  ));
+}
+
 function listMine(req, res, next) {
   return afterQueueSync(next, () => {
     const tickets = queueRepository
@@ -139,6 +152,9 @@ function get(req, res, next) {
 function join(req, res, next) {
   const service = servicesRepository.findById(req.body.serviceId);
   if (!service) return res.status(404).json({ error: 'Service not found' });
+  if (queueRepository.queueStatusForService(service.id) !== 'open') {
+    return res.status(409).json({ error: 'This queue is closed and is not accepting new tickets' });
+  }
 
   return safely(next, () => thenMaybe(
     queueRepository.join({ userId: req.user.id, customerName: req.user.name, service }),
@@ -213,4 +229,14 @@ function serveNext(req, res, next) {
   )));
 }
 
-module.exports = { list, listMine, listNotifications, get, join, leave, serveNext };
+module.exports = {
+  list,
+  listQueues,
+  updateQueueStatus,
+  listMine,
+  listNotifications,
+  get,
+  join,
+  leave,
+  serveNext,
+};

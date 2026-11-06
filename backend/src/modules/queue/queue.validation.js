@@ -8,4 +8,9 @@ const leaveQueueRules = [
   param('ticketId').trim().notEmpty().withMessage('Ticket ID is required'),
 ];
 
-module.exports = { joinQueueRules, leaveQueueRules };
+const updateQueueStatusRules = [
+  param('queueId').isUUID().withMessage('Queue ID must be a UUID'),
+  body('status').isIn(['open', 'closed']).withMessage('Status must be open or closed'),
+];
+
+module.exports = { joinQueueRules, leaveQueueRules, updateQueueStatusRules };

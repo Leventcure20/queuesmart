@@ -34,7 +34,9 @@ function mapService(service) {
     duration: service.expectedDuration,
     wait: service.expectedDuration,
     priority: service.priorityLevel,
-    status: "Open",
+    status: (service.queueStatus || service.status || "open") === "closed"
+      ? "Closed"
+      : "Open",
   };
 }
 
@@ -95,8 +97,21 @@ window.QueueSmartApi = {
     return apiRequest("/auth/logout", { method: "POST" });
   },
   async getServices() {
-    const result = await apiRequest("/services");
-    return result.services.map(mapService);
+    const [serviceResult, queueResult] = await Promise.all([
+      apiRequest("/services"),
+      apiRequest("/queue/queues"),
+    ]);
+    const queuesByService = new Map(
+      queueResult.queues.map((queue) => [queue.serviceId, queue]),
+    );
+    return serviceResult.services.map((service) => {
+      const queue = queuesByService.get(service.id);
+      return mapService({
+        ...service,
+        queueId: queue?.id,
+        queueStatus: queue?.status,
+      });
+    });
   },
   async getTickets() {
     const session = readAuthSession();
@@ -132,6 +147,13 @@ window.QueueSmartApi = {
       method : "POST",
       body: JSON.stringify({ serviceId }),
     });
+  },
+  async updateQueueStatus(queueId, status) {
+    const result = await apiRequest("/queue/queues/" + encodeURIComponent(queueId), {
+      method: "PATCH",
+      body: JSON.stringify({ status }),
+    });
+    return result.queue;
   },
   async createService(service) {
     const result = await apiRequest("/services", {

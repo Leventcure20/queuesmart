@@ -583,6 +583,11 @@ tbody tr:hover {
   background: #52b687
 }
 
+.badge.closed {
+  background: #fff0f0;
+  color: #b84d58
+}
+
 .service-summary {
   padding-bottom: 13px
 }

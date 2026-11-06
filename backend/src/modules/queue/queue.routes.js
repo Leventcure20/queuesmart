@@ -1,12 +1,22 @@
 const express = require('express');
 const queueController = require('./queue.controller');
 const validateRequest = require('../../middleware/validate-request');
-const { joinQueueRules, leaveQueueRules } = require('./queue.validation');
+const { joinQueueRules, leaveQueueRules, updateQueueStatusRules } = require('./queue.validation');
 const authenticate = require('../auth/auth.middleware');
 const requireRole = require('../auth/require-role');
 const { ROLES } = require('../auth/roles');
 
 const router = express.Router();
+
+router.get('/queues', authenticate, queueController.listQueues);
+router.patch(
+  '/queues/:queueId',
+  authenticate,
+  requireRole(ROLES.ADMIN),
+  updateQueueStatusRules,
+  validateRequest,
+  queueController.updateQueueStatus
+);
 
 router.post(
     "/serve-next",

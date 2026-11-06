@@ -19,7 +19,13 @@ function create(req, res, next) {
   return respond(
     servicesRepository.create({ name, description, expectedDuration, priorityLevel }),
     next,
-    (service) => res.status(201).json({ service })
+    (service) => respond(
+      queueRepository.ensureQueueForService(service),
+      next,
+      (queue) => res.status(201).json({
+        service: { ...service, queueId: queue.id, status: queue.status },
+      })
+    )
   );
 }
 
@@ -41,7 +47,10 @@ function remove(req, res, next) {
     return res.status(409).json({ error: 'This service has active queue tickets. Clear the queue before deleting it.' });
   }
 
-  return respond(servicesRepository.remove(req.params.id), next, () => res.json({ service }));
+  return respond(servicesRepository.remove(req.params.id), next, () => {
+    queueRepository.removeQueueForService(service.id);
+    return res.json({ service });
+  });
 }
 
 module.exports = { list, create, update, remove };
