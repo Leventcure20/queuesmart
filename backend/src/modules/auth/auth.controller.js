@@ -1,4 +1,5 @@
 const authRepository = require('./auth.repository');
+const emailService = require('./email.service');
 
 async function register(req, res, next) {
   try {
@@ -34,17 +35,31 @@ function logout(req, res) {
 
 async function forgotPassword(req, res, next) {
   try {
-    const token = await authRepository.createPasswordResetToken(req.body.email);
+    const reset = await authRepository.createPasswordResetToken(req.body.email);
     const frontendUrl = (process.env.FRONTEND_URL || 'http://localhost:8000').replace(/\/$/, '');
     const isDevelopment = (process.env.NODE_ENV || 'development') === 'development';
-    if (token && isDevelopment) {
-      console.info(`Password reset link: ${frontendUrl}/reset-password.html#token=${token}`);
+    let resetLink;
+    if (reset) {
+      const link = `${frontendUrl}/reset-password.html#token=${reset.token}&expiresAt=${encodeURIComponent(reset.expiresAt)}`;
+      if (isDevelopment) {
+        resetLink = link;
+      } else if (emailService.isConfigured()) {
+        try {
+          await emailService.sendPasswordResetEmail(req.body.email, link);
+        } catch (error) {
+          console.error('Could not send password reset email:', error.message);
+        }
+      }
     }
-    return res.json({
-      message: isDevelopment
-        ? 'If an account exists for that email, a reset link is available in the backend terminal for local development.'
-        : 'If an account exists for that email, contact the administrator for help resetting the password.',
-    });
+    const demoLinkAvailable = Boolean(resetLink);
+    const message = !reset
+      ? 'No user exists with that email.'
+      : demoLinkAvailable
+        ? 'Reset link expires after 30 seconds.'
+        : emailService.isConfigured()
+          ? 'Password reset request received.'
+          : 'Password reset is unavailable in this environment.';
+    return res.json({ message, ...(resetLink ? { resetLink } : {}) });
   } catch (error) {
     return next(error);
   }

@@ -115,16 +115,21 @@ async function createPasswordResetToken(email) {
 
   const token = randomBytes(32).toString('hex');
   const tokenHash = createHash('sha256').update(token).digest('hex');
-  await pool.query(
+  const inserted = await pool.query(
     `INSERT INTO "PasswordResetTokens" (user_id, token_hash, expires_at)
-     VALUES ($1, $2, NOW() + INTERVAL '15 minutes')
+     VALUES (
+       $1,
+       $2,
+       NOW() + CASE WHEN $3 THEN INTERVAL '15 minutes' ELSE INTERVAL '30 seconds' END
+     )
      ON CONFLICT (user_id) DO UPDATE
      SET token_hash = EXCLUDED.token_hash,
          expires_at = EXCLUDED.expires_at,
-         created_at = NOW()`,
-    [account.rows[0].id, tokenHash]
+         created_at = NOW()
+     RETURNING expires_at`,
+    [account.rows[0].id, tokenHash, Boolean(process.env.SMTP_HOST && process.env.SMTP_FROM)]
   );
-  return token;
+  return { token, expiresAt: inserted.rows[0].expires_at };
 }
 
 async function resetPassword(token, password) {
@@ -137,7 +142,7 @@ async function resetPassword(token, password) {
     await client.query('BEGIN');
     const result = await client.query(
       `SELECT user_id FROM "PasswordResetTokens"
-       WHERE token_hash = $1 AND expires_at > NOW()
+       WHERE token_hash = $1 AND expires_at > clock_timestamp()
        FOR UPDATE`,
       [tokenHash]
     );

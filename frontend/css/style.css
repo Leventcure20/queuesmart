@@ -892,6 +892,18 @@ tbody tr:hover {
   min-height: 0
 }
 
+.demo-reset-link {
+  color: #2563eb;
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 2px
+}
+
+#demo-reset-link {
+  color: var(--muted);
+  text-align: center
+}
+
 .form-switch {
   text-align: center;
   font-size: 10px;
@@ -2173,15 +2185,15 @@ tbody tr:hover {
 }
 
 .auth-page .landing-brand {
-  position: absolute;
-  left: 28px;
-  top: 15px
+  position: static
 }
 
 .auth-page .landing-nav {
   position: absolute;
   right: 28px;
-  top: 16px
+  top: 16px;
+  width: auto;
+  justify-content: flex-end
 }
 
 .auth-page .landing-nav a {
@@ -2256,6 +2268,10 @@ tbody tr:hover {
 
 .auth-page .form-switch {
   font-size: 13px
+}
+
+.auth-page .form-card h1 {
+  text-align: center
 }
 
 .auth-page .form-card h2,
