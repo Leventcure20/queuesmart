@@ -25,7 +25,7 @@ test('services controller lists the available services', (t) => {
 });
 
 test('services controller creates a service with only the four supported input fields', (t) => {
-  const { controller, services } = setup();
+  const { controller, services, queue } = setup();
   const supported = {
     name: 'Support',
     description: 'Account support',
@@ -47,7 +47,7 @@ test('services controller creates a service with only the four supported input f
   assert.equal(create.mock.callCount(), 1);
   assert.deepEqual(create.mock.calls[0].arguments, [supported]);
   assert.equal(res.statusCode, 201);
-  assert.deepEqual(res.body, { service: created });
+  assert.deepEqual(res.body, { service: { ...created, queueId: queue.findQueueByServiceId(created.id).id, status: 'open' } });
 });
 
 test('services controller updates an existing service and returns the stored result', (t) => {

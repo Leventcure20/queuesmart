@@ -274,3 +274,34 @@ test('Google sign-in verifies the ID token and creates a normal QueueSmart sessi
     else process.env.GOOGLE_CLIENT_ID = previousClientId;
   }
 });
+
+test('queue admin routes require authentication and enforce roles and validation', async () => {
+  const owner = await session();
+  const admin = await session('admin');
+  const queue = require('../src/modules/queue/queue.repository').ensureQueueForService({ id: 'S-01' });
+  const route = `/api/queue/queues/${queue.id}`;
+  assert.equal((await request('GET', '/api/queue/queues')).status, 401);
+  assert.equal((await request('PATCH', route, { body: { status: 'closed' } })).status, 401);
+  assert.equal((await request('POST', '/api/queue/serve-next', { body: { serviceId: 'S-01' } })).status, 401);
+  assert.equal((await request('GET', '/api/queue/queues', { token: owner.token })).status, 200);
+  assert.equal((await request('PATCH', route, { token: owner.token, body: { status: 'closed' } })).status, 403);
+  assert.equal((await request('POST', '/api/queue/serve-next', { token: owner.token, body: { serviceId: 'S-01' } })).status, 403);
+  assert.equal((await request('PATCH', '/api/queue/queues/invalid', { token: admin.token, body: { status: 'closed' } })).status, 400);
+  assert.equal((await request('PATCH', route, { token: admin.token, body: { status: 'invalid' } })).status, 400);
+  assert.equal((await request('PATCH', route, { token: admin.token, body: { status: 'closed' } })).status, 200);
+  assert.equal((await request('POST', '/api/queue/tickets', { token: owner.token, body: { serviceId: 'S-01' } })).status, 409);
+  assert.equal((await request('PATCH', route, { token: admin.token, body: { status: 'open' } })).status, 200);
+  assert.equal((await request('POST', '/api/queue/tickets', { token: owner.token, body: { serviceId: 'S-01' } })).status, 201);
+  const served = await request('POST', '/api/queue/serve-next', { token: admin.token, body: { serviceId: 'S-01' } });
+  assert.equal(served.status, 200);
+  assert.equal(served.body.completed.status, 'served');
+  assert.equal(served.body.next, null);
+});
+
+test('password recovery routes apply validation before invoking storage', async () => {
+  assert.equal((await request('POST', '/api/auth/forgot-password', { body: { email: 'invalid' } })).status, 400);
+  assert.equal((await request('POST', '/api/auth/reset-password', { body: { token: 'invalid', password: 'password123' } })).status, 400);
+  const valid = await request('POST', '/api/auth/reset-password', { body: { token: 'a'.repeat(64), password: 'password123' } });
+  assert.equal(valid.status, 400);
+  assert.match(valid.body.error, /invalid or has expired/);
+});
