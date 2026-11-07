@@ -26,6 +26,7 @@ test('notifications retain ticket context, content, and creation time', (t) => {
     id: notification.id, ticketId: 'ticket-a', ticketNumber: 'Q001',
     serviceName: 'General Inquiry', type: 'joined', title: 'Joined',
     message: 'You joined the queue.', createdAt: '2026-01-01T12:00:00.000Z',
+    status: 'sent', viewedAt: null,
   });
   assert.deepEqual(repository.listForUser('user-a'), [notification]);
 });
@@ -40,6 +41,20 @@ test('each ticket and event type generates at most one notification', (t) => {
   assert.notEqual(joined.id, turn.id);
   assert.notEqual(joined.id, secondTicket.id);
   assert.deepEqual(repository.listForUser('user-a'), [secondTicket, turn, joined]);
+});
+
+test('markAllViewed records a viewing time only for that user and keeps it stable', (t) => {
+  const repository = setup(t);
+  create(repository);
+  create(repository, {
+    userId: 'user-b', ticket: { ...ticket, id: 'ticket-b', number: 'Q002' },
+  });
+  const viewed = repository.markAllViewed('user-a');
+  assert.equal(viewed[0].status, 'viewed');
+  assert.equal(viewed[0].viewedAt, '2026-01-01T12:00:00.000Z');
+  assert.equal(repository.listForUser('user-b')[0].status, 'sent');
+  t.mock.timers.setTime(START + 1000);
+  assert.equal(repository.markAllViewed('user-a')[0].viewedAt, '2026-01-01T12:00:00.000Z');
 });
 
 test('notification lists are isolated per user, newest first, and return separate arrays', (t) => {

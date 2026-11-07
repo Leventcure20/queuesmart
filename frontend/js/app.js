@@ -227,7 +227,7 @@
 
   const serveNextControls = () => `
   <div class="panel" style="padding:16px;margin-bottom:16px;display:flex;gap:12px;align-items:center;flex-wrap:wrap">
-    <label for="serve-service">Service to advance</label>
+    <label for="serve-service">Service</label>
     <select id="serve-service">
       ${data.services
         .map((s) => `<option value="${s.id}">${s.name}</option>`)
@@ -237,7 +237,7 @@
       class="button button-primary"
       data-action="serve-next"
     >
-      Serve next user →
+      Complete current & call next →
     </button>
   </div>`;
   const notificationList = () =>
@@ -246,6 +246,15 @@
     const list = document.querySelector("#notification-items");
     if (!list) return;
     list.replaceChildren();
+    const unreadCount = notifications.filter((item) => item.status === "sent").length;
+    document.querySelectorAll('[data-action="toggle-notifications"]').forEach((button) => {
+      const indicator = button.querySelector("b");
+      button.setAttribute(
+        "aria-label",
+        unreadCount ? "Notifications, " + unreadCount + " unread" : "Notifications",
+      );
+      if (indicator) indicator.hidden = unreadCount === 0;
+    });
     if (!notifications.length) {
       const empty = document.createElement("p");
       empty.className = "muted";
@@ -267,11 +276,15 @@
       title.textContent = item.title;
       const message = document.createElement("small");
       message.textContent = item.message;
-      copy.append(title, message);
+      const status = document.createElement("small");
+      status.className = "notification-status " + item.status;
+      status.textContent = item.status === "viewed" ? "Viewed" : "Sent";
+      copy.append(title, message, status);
       const time = document.createElement("time");
-      time.textContent = new Date(item.createdAt).toLocaleTimeString([], {
-        hour: "2-digit",
-        minute: "2-digit",
+      time.dateTime = item.createdAt;
+      time.textContent = new Date(item.createdAt).toLocaleString([], {
+        dateStyle: "short",
+        timeStyle: "short",
       });
       row.append(icon, copy, time);
       list.append(row);
@@ -552,6 +565,14 @@
               ? button.dataset.openLabel
               : button.dataset.closeLabel;
         });
+      if (!panel.hidden) {
+        try {
+          const notifications = await window.QueueSmartApi.markNotificationsViewed();
+          renderNotifications(notifications);
+        } catch {
+          toast("Could not update notification status. Try again.");
+        }
+      }
       return;
     }
 

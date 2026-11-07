@@ -180,6 +180,13 @@ function listNotifications(req, res, next) {
   ));
 }
 
+function markNotificationsViewed(req, res, next) {
+  return safely(next, () => thenMaybe(
+    notificationsRepository.markAllViewed(req.user.id),
+    (notifications) => res.json({ notifications })
+  ));
+}
+
 function leave(req, res, next) {
   return safely(next, () => thenMaybe(syncQueueProgress(), () => {
     const existing = queueRepository.findById(req.params.ticketId);
@@ -235,6 +242,7 @@ module.exports = {
   updateQueueStatus,
   listMine,
   listNotifications,
+  markNotificationsViewed,
   get,
   join,
   leave,

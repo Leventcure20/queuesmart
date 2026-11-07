@@ -14,6 +14,8 @@ function fromRow(row) {
     title: row.title,
     message: row.message,
     createdAt: new Date(row.created_at).toISOString(),
+    status: row.status,
+    viewedAt: row.viewed_at ? new Date(row.viewed_at).toISOString() : null,
   };
 }
 
@@ -31,6 +33,8 @@ function create({ userId, ticket, type, title, message }) {
       title,
       message,
       createdAt: new Date().toISOString(),
+      status: 'sent',
+      viewedAt: null,
     };
     const userNotifications = notificationsByUser.get(userId) || [];
     userNotifications.unshift(notification);
@@ -44,7 +48,8 @@ function create({ userId, ticket, type, title, message }) {
        (id, ticket_id, user_id, ticket_number, service_name, type, title, message)
      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
      ON CONFLICT (ticket_id, type) DO NOTHING
-     RETURNING id, ticket_id, ticket_number, service_name, type, title, message, created_at`,
+     RETURNING id, ticket_id, ticket_number, service_name, type, title, message, created_at,
+               status, viewed_at`,
     [randomUUID(), ticket.id, userId, ticket.number, ticket.serviceName, type, title, message]
   ).then((result) => result.rows[0] ? fromRow(result.rows[0]) : null);
 }
@@ -52,7 +57,8 @@ function create({ userId, ticket, type, title, message }) {
 function listForUser(userId) {
   if (pool) {
     return pool.query(
-      `SELECT id, ticket_id, ticket_number, service_name, type, title, message, created_at
+      `SELECT id, ticket_id, ticket_number, service_name, type, title, message, created_at,
+              status, viewed_at
        FROM "QueueNotifications" WHERE user_id = $1
        ORDER BY created_at DESC, id DESC`,
       [userId]
@@ -61,4 +67,25 @@ function listForUser(userId) {
   return [...(notificationsByUser.get(userId) || [])];
 }
 
-module.exports = { create, listForUser };
+function markAllViewed(userId) {
+  if (pool) {
+    return pool.query(
+      `UPDATE "QueueNotifications"
+       SET status = 'viewed', viewed_at = COALESCE(viewed_at, NOW())
+       WHERE user_id = $1 AND status = 'sent'`,
+      [userId]
+    ).then(() => listForUser(userId));
+  }
+
+  const viewedAt = new Date().toISOString();
+  const userNotifications = notificationsByUser.get(userId) || [];
+  userNotifications.forEach((notification) => {
+    if (notification.status === 'sent') {
+      notification.status = 'viewed';
+      notification.viewedAt = viewedAt;
+    }
+  });
+  return [...userNotifications];
+}
+
+module.exports = { create, listForUser, markAllViewed };

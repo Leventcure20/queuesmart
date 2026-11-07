@@ -2756,6 +2756,15 @@ tbody tr:hover {
   margin-top: 3px
 }
 
+.notification-copy .notification-status {
+  color: #6d7285;
+  font-weight: 600
+}
+
+.notification-copy .notification-status.sent {
+  color: #b4663b
+}
+
 .notification-row time {
   flex: none;
   font-size: 8px;
