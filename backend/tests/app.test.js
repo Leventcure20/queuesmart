@@ -305,3 +305,51 @@ test('password recovery routes apply validation before invoking storage', async 
   assert.equal(valid.status, 400);
   assert.match(valid.body.error, /invalid or has expired/);
 });
+
+test('notification viewed route authenticates users and cannot mark another account history', async (t) => {
+  t.mock.timers.enable({ apis: ['Date'], now: Date.UTC(2026, 0, 1) });
+  const owner = await session();
+  const other = await session('other');
+  for (const token of [owner.token, other.token]) {
+    assert.equal((await request('POST', '/api/queue/tickets', { token, body: { serviceId: 'S-01' } })).status, 201);
+  }
+  assert.equal((await request('PATCH', '/api/queue/notifications/viewed')).status, 401);
+  const route = '/api/queue/notifications/viewed';
+  const viewed = await request('PATCH', route, { token: owner.token, body: { userId: other.user.id } });
+  assert.equal(viewed.status, 200);
+  assert.ok(viewed.body.notifications.length > 0);
+  assert.ok(viewed.body.notifications.every((n) => n.status === 'viewed' && n.viewedAt === new Date().toISOString()));
+  const otherNotices = await request('GET', '/api/queue/notifications', { token: other.token });
+  assert.ok(otherNotices.body.notifications.length > 0);
+  assert.ok(otherNotices.body.notifications.every((n) => n.status === 'sent' && n.viewedAt === null));
+  t.mock.timers.tick(1000);
+  const repeated = await request('PATCH', route, { token: owner.token });
+  assert.deepEqual(repeated.body.notifications, viewed.body.notifications);
+  const repository = require('../src/modules/queue/notifications.repository');
+  const failure = new Error('history database unavailable');
+  t.mock.method(repository, 'markAllViewed', async () => { throw failure; });
+  t.mock.method(console, 'error', () => {});
+  const failed = await request('PATCH', route, { token: owner.token });
+  assert.equal(failed.status, 500);
+  assert.deepEqual(failed.body, { error: 'Internal server error' });
+});
+
+test('API rejects malformed identifiers and serve-next payloads before controller work', async (t) => {
+  const owner = await session();
+  const admin = await session('admin');
+  const queue = require('../src/modules/queue/queue.repository');
+  const services = require('../src/modules/services/services.repository');
+  const serve = t.mock.method(queue, 'serveNext');
+  const remove = t.mock.method(services, 'remove');
+  for (const body of [{}, { serviceId: null }, { serviceId: ['S-01'] }, { serviceId: 's'.repeat(65) }]) {
+    assert.equal((await request('POST', '/api/queue/serve-next', { token: admin.token, body })).status, 400);
+  }
+  for (const method of ['GET', 'DELETE']) {
+    assert.equal((await request(method, '/api/queue/tickets/invalid-id', { token: owner.token })).status, 400);
+  }
+  assert.equal((await request('DELETE', '/api/services/' + 's'.repeat(65), { token: admin.token })).status, 400);
+  assert.equal((await request('PUT', '/api/services/' + 's'.repeat(65), { token: admin.token, body: { name: 'Help' } })).status, 400);
+  assert.equal((await request('PATCH', '/api/queue/queues/11111111-1111-4111-8111-111111111111', { token: admin.token, body: { status: ['open'] } })).status, 400);
+  assert.equal(serve.mock.callCount(), 0);
+  assert.equal(remove.mock.callCount(), 0);
+});
