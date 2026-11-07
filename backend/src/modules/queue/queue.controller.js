@@ -31,6 +31,23 @@ function withWaitEstimate(ticket) {
   };
 }
 
+function withQueueEntries(tickets) {
+  return thenMaybe(queueRepository.getEntries(tickets.map((ticket) => ticket.id)), (entries) => {
+    const entriesByTicket = new Map(entries.map((entry) => [entry.id, entry]));
+    return tickets.map((ticket) => {
+      const response = withWaitEstimate(ticket);
+      const entry = entriesByTicket.get(ticket.id);
+      if (!entry) return response;
+      return {
+        ...response,
+        queueId: entry.queueId,
+        position: entry.position,
+        queueEntry: entry,
+      };
+    });
+  });
+}
+
 function isPromise(value) {
   return value && typeof value.then === 'function';
 }
@@ -110,9 +127,10 @@ function afterQueueSync(next, callback) {
 }
 
 function list(_req, res, next) {
-  return afterQueueSync(next, () =>
-    res.json({ tickets: queueRepository.list().map(withWaitEstimate) })
-  );
+  return afterQueueSync(next, () => thenMaybe(
+    withQueueEntries(queueRepository.list()),
+    (tickets) => res.json({ tickets })
+  ));
 }
 
 function listQueues(_req, res) {
@@ -132,9 +150,8 @@ function listMine(req, res, next) {
   return afterQueueSync(next, () => {
     const tickets = queueRepository
       .list()
-      .filter((ticket) => ticket.userId === req.user.id)
-      .map(withWaitEstimate);
-    return res.json({ tickets });
+      .filter((ticket) => ticket.userId === req.user.id);
+    return thenMaybe(withQueueEntries(tickets), (entries) => res.json({ tickets: entries }));
   });
 }
 
@@ -145,7 +162,7 @@ function get(req, res, next) {
     if (ticket.userId !== req.user.id && req.user.role !== ROLES.ADMIN) {
       return res.status(403).json({ error: 'You can only view your own ticket' });
     }
-    return res.json({ ticket: withWaitEstimate(ticket) });
+    return thenMaybe(withQueueEntries([ticket]), (entries) => res.json({ ticket: entries[0] }));
   });
 }
 
@@ -167,7 +184,9 @@ function join(req, res, next) {
         message: `Ticket ${ticket.number} for ${ticket.serviceName} is in the queue.`,
       }),
       () => thenMaybe(syncQueueProgress(), () => thenMaybe(syncCloseNotifications(), () =>
-        res.status(201).json({ ticket: withWaitEstimate(queueRepository.findById(ticket.id)) })
+        thenMaybe(withQueueEntries([queueRepository.findById(ticket.id)]), (entries) =>
+          res.status(201).json({ ticket: entries[0] })
+        )
       ))
     )
   ));
@@ -208,7 +227,7 @@ function leave(req, res, next) {
           ? `An administrator removed ticket ${ticket.number} for ${ticket.serviceName} from the queue.`
           : `Ticket ${ticket.number} for ${ticket.serviceName} has left the queue.`,
       }), () => thenMaybe(syncQueueProgress(), () => thenMaybe(syncCloseNotifications(), () =>
-        res.json({ ticket: withWaitEstimate(ticket) })
+        thenMaybe(withQueueEntries([ticket]), (entries) => res.json({ ticket: entries[0] }))
       )));
     });
   }));
@@ -228,10 +247,13 @@ function serveNext(req, res, next) {
         type: 'your_turn',
         title: 'It’s your turn',
         message: `Ticket ${ticket.number} for ${ticket.serviceName} is now being served.`,
-      })), () => thenMaybe(syncCloseNotifications(), () => res.json({
-        completed: withWaitEstimate(result.completed),
-        next: result.next ? withWaitEstimate(result.next) : null,
-      })));
+      })), () => thenMaybe(syncCloseNotifications(), () => thenMaybe(
+        withQueueEntries([result.completed, ...(result.next ? [result.next] : [])]),
+        (entries) => res.json({
+          completed: entries[0],
+          next: result.next ? entries[1] : null,
+        })
+      )));
     }
   )));
 }

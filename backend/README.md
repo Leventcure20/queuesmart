@@ -19,7 +19,7 @@ createuser --pwprompt queuesmart_user
 createdb -O queuesmart_user queuesmart
 ```
 
-For a new database, run all nine checked-in SQL files in order. They create `UserCredentials`, `UserProfile`, `Service`, password-reset storage, persistent queues, tickets, notification status/history, and database-level validation constraints, then insert the three demo services:
+For a new database, run all ten checked-in SQL files in order. They create `UserCredentials`, `UserProfile`, `Service`, password-reset storage, persistent queues, tickets, notification status/history, database-level validation constraints, and the `QueueEntry` view, then insert the three demo services:
 
 ```sh
 psql -h localhost -U queuesmart_user -d queuesmart -f ../database/001_create_user_credentials.sql
@@ -31,13 +31,14 @@ psql -h localhost -U queuesmart_user -d queuesmart -f ../database/006_create_que
 psql -h localhost -U queuesmart_user -d queuesmart -f ../database/007_create_service_queues.sql
 psql -h localhost -U queuesmart_user -d queuesmart -f ../database/008_notification_history.sql
 psql -h localhost -U queuesmart_user -d queuesmart -f ../database/009_validation_constraints.sql
+psql -h localhost -U queuesmart_user -d queuesmart -f ../database/010_queue_entry.sql
 ```
 
-If earlier SQL files have already been applied, run only the remaining files in order.
+Migration `010_queue_entry.sql` changes existing tables, so run it as their owner or a PostgreSQL administrator if `queuesmart_user` does not own them. If earlier SQL files have already been applied, run only the remaining files in order.
 
 Set `DATABASE_URL` in `backend/.env` to `postgresql://queuesmart_user:YOUR_PASSWORD@localhost:5432/queuesmart`, replacing `YOUR_PASSWORD` with the password you chose. Do not commit `.env`. The API stores credentials in `UserCredentials`, profile details in `UserProfile`, organization services in `Service`, hashed reset tokens in `PasswordResetTokens`, queues in `Queue`, queue tickets in `QueueTickets`, and user notifications in `QueueNotifications`. The local Forgot Password flow displays a short-lived demo link on the page. Login sessions remain in memory, so users sign in again after the API restarts.
 
-The API health endpoint is `GET /api/health`.
+The API health endpoint is `GET /api/health`. Queue ticket responses also include the associated `queueEntry`, read from the `QueueEntry` view, with its queue ID, user ID, current position, join time, and status.
 
 ## Tests
 

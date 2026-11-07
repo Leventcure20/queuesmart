@@ -3,6 +3,7 @@
 -- QueueTickets is the existing ticket/entry table. Extending it instead of
 -- copying tickets to a second table, preserving the current backend and history.
 -- Run after database/009_validation_constraints.sql.
+-- Run as the owner of QueueTickets and Queue (or a PostgreSQL administrator).
 BEGIN;
 
 -- Associate existing tickets with their service's queue.

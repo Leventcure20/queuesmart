@@ -12,6 +12,7 @@ function iso(value) {
 function fromRow(row) {
   return {
     id: row.id,
+    queueId: row.queue_id,
     number: row.number,
     customerName: row.customer_name,
     userId: row.user_id,
@@ -42,7 +43,7 @@ async function initialize() {
   if (!pool) return;
   const [ticketResult, queueResult] = await Promise.all([
     pool.query(
-      `SELECT id, number, customer_name, user_id, service_id, service_name,
+      `SELECT id, queue_id, number, customer_name, user_id, service_id, service_name,
               status, joined_at, scheduled_start_at, service_started_at,
               served_at, cancellation_reason, left_at, created_at, updated_at
        FROM "QueueTickets" ORDER BY joined_at, id`
@@ -151,6 +152,40 @@ function getPosition(id) {
   return activeForService.findIndex((candidate) => candidate.id === id) + 1;
 }
 
+function getEntries(ticketIds) {
+  const ids = [...new Set(ticketIds)];
+  if (!ids.length) return pool ? Promise.resolve([]) : [];
+
+  if (pool) {
+    return pool.query(
+      `SELECT id, queue_id, user_id, position, join_time, status
+       FROM "QueueEntry"
+       WHERE id = ANY($1::uuid[])`,
+      [ids]
+    ).then((result) => result.rows.map((row) => ({
+      id: row.id,
+      queueId: row.queue_id,
+      userId: row.user_id,
+      position: row.position,
+      joinTime: iso(row.join_time),
+      status: row.status,
+    })));
+  }
+
+  return ids.flatMap((id) => {
+    const ticket = tickets.get(id);
+    if (!ticket) return [];
+    return [{
+      id: ticket.id,
+      queueId: findQueueByServiceId(ticket.serviceId)?.id || null,
+      userId: ticket.userId,
+      position: getPosition(ticket.id),
+      joinTime: ticket.joinedAt,
+      status: ticket.status === "cancelled" ? "canceled" : ticket.status,
+    }];
+  });
+}
+
 function persistTicket(ticket) {
   return pool.query(
     `UPDATE "QueueTickets" SET
@@ -257,7 +292,7 @@ function join({ userId, customerName, service }) {
          (id, number, customer_name, user_id, service_id, service_name, status)
        SELECT $1, next_number.number, $2, $3, $4, $5, 'waiting'
        FROM next_number
-       RETURNING id, number, customer_name, user_id, service_id, service_name,
+       RETURNING id, queue_id, number, customer_name, user_id, service_id, service_name,
                  status, joined_at, scheduled_start_at, service_started_at,
                  served_at, cancellation_reason, left_at, created_at, updated_at`,
       [id, customerName, userId, service.id, service.name]
@@ -346,6 +381,7 @@ module.exports = {
   list,
   findById,
   getPosition,
+  getEntries,
   advanceService,
   join,
   leave,
