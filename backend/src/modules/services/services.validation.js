@@ -4,6 +4,7 @@ const priorityLevels = ['low', 'medium', 'high'];
 const serviceFields = ['name', 'description', 'expectedDuration', 'priorityLevel'];
 const MAX_NAME_LENGTH = 100;
 const MAX_DESCRIPTION_LENGTH = 500;
+const MAX_SERVICE_ID_LENGTH = 64;
 const MAX_DURATION_MINUTES = 1440;
 
 function textRule(field, label, maxLength, optional = false) {
@@ -47,7 +48,8 @@ const createServiceRules = [
 ];
 
 const updateServiceRules = [
-  param('id').trim().notEmpty().withMessage('Service ID is required'),
+  param('id').isString().bail().trim().notEmpty().withMessage('Service ID is required').bail()
+    .isLength({ max: MAX_SERVICE_ID_LENGTH }).withMessage(`Service ID must be no more than ${MAX_SERVICE_ID_LENGTH} characters`),
   textRule('name', 'Service name', MAX_NAME_LENGTH, true),
   textRule('description', 'Description', MAX_DESCRIPTION_LENGTH, true),
   durationRule(true),
@@ -58,4 +60,9 @@ const updateServiceRules = [
     .withMessage('Only name, description, expectedDuration, and priorityLevel can be updated'),
 ];
 
-module.exports = { createServiceRules, updateServiceRules };
+const serviceIdRules = [
+  param('id').isString().bail().trim().notEmpty().withMessage('Service ID is required').bail()
+    .isLength({ max: MAX_SERVICE_ID_LENGTH }).withMessage(`Service ID must be no more than ${MAX_SERVICE_ID_LENGTH} characters`),
+];
+
+module.exports = { createServiceRules, updateServiceRules, serviceIdRules };

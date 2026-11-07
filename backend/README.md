@@ -19,7 +19,7 @@ createuser --pwprompt queuesmart_user
 createdb -O queuesmart_user queuesmart
 ```
 
-For a new database, run all seven checked-in SQL files in order. They create `UserCredentials`, `UserProfile`, `Service`, password-reset storage, persistent queues, tickets, and notifications, then insert the three demo services:
+For a new database, run all nine checked-in SQL files in order. They create `UserCredentials`, `UserProfile`, `Service`, password-reset storage, persistent queues, tickets, notification status/history, and database-level validation constraints, then insert the three demo services:
 
 ```sh
 psql -h localhost -U queuesmart_user -d queuesmart -f ../database/001_create_user_credentials.sql
@@ -29,6 +29,8 @@ psql -h localhost -U queuesmart_user -d queuesmart -f ../database/004_seed_servi
 psql -h localhost -U queuesmart_user -d queuesmart -f ../database/005_create_password_reset_tokens.sql
 psql -h localhost -U queuesmart_user -d queuesmart -f ../database/006_create_queue_persistence.sql
 psql -h localhost -U queuesmart_user -d queuesmart -f ../database/007_create_service_queues.sql
+psql -h localhost -U queuesmart_user -d queuesmart -f ../database/008_notification_history.sql
+psql -h localhost -U queuesmart_user -d queuesmart -f ../database/009_validation_constraints.sql
 ```
 
 If earlier SQL files have already been applied, run only the remaining files in order.

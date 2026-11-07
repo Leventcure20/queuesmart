@@ -1,7 +1,7 @@
 const express = require('express');
 const queueController = require('./queue.controller');
 const validateRequest = require('../../middleware/validate-request');
-const { joinQueueRules, leaveQueueRules, updateQueueStatusRules } = require('./queue.validation');
+const { joinQueueRules, leaveQueueRules, updateQueueStatusRules, serveNextRules } = require('./queue.validation');
 const authenticate = require('../auth/auth.middleware');
 const requireRole = require('../auth/require-role');
 const { ROLES } = require('../auth/roles');
@@ -22,6 +22,8 @@ router.post(
     "/serve-next",
     authenticate,
     requireRole(ROLES.ADMIN),
+    serveNextRules,
+    validateRequest,
     queueController.serveNext
 );
 

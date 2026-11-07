@@ -1,11 +1,12 @@
 const { OAuth2Client } = require('google-auth-library');
 const authRepository = require('./auth.repository');
 
+const MAX_GOOGLE_CREDENTIAL_LENGTH = 8192;
 const googleClient = new OAuth2Client();
 
 async function login(req, res, next) {
   const credential = req.body?.credential;
-  if (typeof credential !== 'string' || !credential) {
+  if (typeof credential !== 'string' || !credential.trim() || credential.length > MAX_GOOGLE_CREDENTIAL_LENGTH) {
     return res.status(400).json({ error: 'A Google credential is required' });
   }
 
@@ -21,7 +22,8 @@ async function login(req, res, next) {
   } catch {
     return res.status(401).json({ error: 'Google credential is invalid or expired' });
   }
-  if (!payload || payload.email_verified !== true || !payload.email) {
+  if (!payload || payload.email_verified !== true || typeof payload.email !== 'string' ||
+      !payload.email.trim() || payload.email.trim().length > 254) {
     return res.status(401).json({ error: 'Google account could not be verified' });
   }
 

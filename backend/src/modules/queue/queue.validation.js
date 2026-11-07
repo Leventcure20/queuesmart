@@ -1,16 +1,23 @@
 const { body, param } = require('express-validator');
 
+const MAX_SERVICE_ID_LENGTH = 64;
+
 const joinQueueRules = [
-  body('serviceId').trim().notEmpty().withMessage('Service ID is required'),
+  body('serviceId').isString().withMessage('Service ID must be a string').bail()
+    .trim().notEmpty().withMessage('Service ID is required').bail()
+    .isLength({ max: MAX_SERVICE_ID_LENGTH }).withMessage('Service ID is too long'),
 ];
 
 const leaveQueueRules = [
-  param('ticketId').trim().notEmpty().withMessage('Ticket ID is required'),
+  param('ticketId').trim().isUUID().withMessage('Ticket ID must be a UUID'),
 ];
 
 const updateQueueStatusRules = [
   param('queueId').isUUID().withMessage('Queue ID must be a UUID'),
-  body('status').isIn(['open', 'closed']).withMessage('Status must be open or closed'),
+  body('status').isString().withMessage('Status must be a string').bail()
+    .isIn(['open', 'closed']).withMessage('Status must be open or closed'),
 ];
 
-module.exports = { joinQueueRules, leaveQueueRules, updateQueueStatusRules };
+const serveNextRules = [...joinQueueRules];
+
+module.exports = { joinQueueRules, leaveQueueRules, updateQueueStatusRules, serveNextRules };

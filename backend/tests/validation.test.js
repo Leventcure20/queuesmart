@@ -216,12 +216,16 @@ for (const [rulesName, field, location] of [
 ]) {
   test(`${rulesName} trims the ${field}`, async () => {
     const rules = freshModule('src/modules/queue/queue.validation.js')[rulesName];
-    const body = location === 'body' ? { [field]: '  identifier  ' } : {};
-    const params = location === 'params' ? { [field]: '  identifier  ' } : {};
+    const value = field === 'ticketId' ? '  550e8400-e29b-41d4-a716-446655440000  ' : '  identifier  ';
+    const body = location === 'body' ? { [field]: value } : {};
+    const params = location === 'params' ? { [field]: value } : {};
     const result = await validate(rules, body, params);
 
     assertAccepted(result);
-    assert.equal(result.req[location][field], 'identifier');
+    assert.equal(
+      result.req[location][field],
+      field === 'ticketId' ? '550e8400-e29b-41d4-a716-446655440000' : 'identifier',
+    );
   });
 
   for (const [label, value] of [['missing', undefined], ['empty', ''], ['whitespace-only', '  ']]) {
@@ -233,3 +237,14 @@ for (const [rulesName, field, location] of [
     });
   }
 }
+
+test('joinQueueRules rejects a non-string or overlong service ID', async () => {
+  const rules = freshModule('src/modules/queue/queue.validation.js').joinQueueRules;
+  assertRejected(await validate(rules, { serviceId: 42 }), 'serviceId');
+  assertRejected(await validate(rules, { serviceId: 'x'.repeat(65) }), 'serviceId');
+});
+
+test('leaveQueueRules rejects a malformed ticket UUID', async () => {
+  const rules = freshModule('src/modules/queue/queue.validation.js').leaveQueueRules;
+  assertRejected(await validate(rules, {}, { ticketId: 'not-a-uuid' }), 'ticketId');
+});
